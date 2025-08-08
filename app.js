@@ -7,8 +7,8 @@ Papa.parse(CSV_URL, {
   header: true,
   complete: function(results) {
     articles = results.data;
-    displayTable(articles);
-    displayCards(articles);
+    applyLimitAndDisplay(articles);
+    
   }
 });
 
@@ -18,6 +18,7 @@ document.getElementById('search').addEventListener('input', e => {
     Object.values(row).some(val => val.toLowerCase().includes(term))
   );
   displayTable(filtered);
+displayCards(filtered);
   displayCards(filtered);
 });
 
@@ -71,3 +72,22 @@ ${csvLine}`;
     alert("Données copiées ! Ouvre une PR sur GitHub pour les ajouter.")
   );
 });
+
+
+  const encodedContent = encodeURIComponent(fullCSV);
+  const githubPRUrl = `https://github.com/<user>/<repo>/new/main/data?filename=new_article.csv&value=${encodedContent}`;
+  document.getElementById("github-pr-link").href = githubPRUrl;
+  document.getElementById("github-pr-link").style.display = 'inline-block';
+
+
+document.getElementById("limit").addEventListener("change", () => applyLimitAndDisplay(articles));
+
+function applyLimitAndDisplay(data) {
+  const limit = document.getElementById("limit").value;
+  let limited = data;
+  if (limit !== "all") {
+    limited = data.slice(0, parseInt(limit));
+  }
+  displayTable(limited);
+  displayCards(limited);
+}

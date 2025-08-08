@@ -12,6 +12,14 @@
 
   <input type="text" id="search" placeholder="Rechercher..." />
 
+<label for="limit">Afficher :</label>
+<select id="limit">
+  <option value="50">50</option>
+  <option value="100">100</option>
+  <option value="all" selected>Tous</option>
+</select>
+
+
   <div>
     <button onclick="showTable()">Tableau</button>
     <button onclick="showCards()">Cartes</button>
@@ -33,6 +41,8 @@
     <button type="submit">Préparer</button>
   </form>
   <pre id="preview"></pre>
+<a id="github-pr-link" target="_blank" style="display: none;">Créer une PR sur GitHub</a>
+<a href="https://github.com/<user>/<repo>/edit/main/data/articles.csv" target="_blank">Modifier le fichier articles.csv sur GitHub</a>
 
   <script src="app.js"></script>
 </body>
