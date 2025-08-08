@@ -90,4 +90,25 @@ function applyLimitAndDisplay(data) {
   }
   displayTable(limited);
   displayCards(limited);
+setAutocompleteFields(data);
+}
+
+function setAutocompleteFields(data) {
+  const uniqueValues = {};
+  ['Année', 'Numéro', 'Auteur(s)', 'Ville(s)', 'Theme(s)', 'Epoque'].forEach(field => {
+    uniqueValues[field] = [...new Set(data.map(row => row[field]).filter(Boolean))];
+  });
+
+  for (const [field, values] of Object.entries(uniqueValues)) {
+    const datalistId = `${field}-list`;
+    let datalist = document.getElementById(datalistId);
+    if (!datalist) {
+      datalist = document.createElement('datalist');
+      datalist.id = datalistId;
+      document.body.appendChild(datalist);
+    }
+    datalist.innerHTML = values.map(v => `<option value="${v}">`).join('');
+    const input = document.querySelector(`input[name="${field}"]`);
+    if (input) input.setAttribute('list', datalistId);
+  }
 }
