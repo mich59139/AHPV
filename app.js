@@ -1,5 +1,5 @@
 
-const CSV_URL = "https://raw.githubusercontent.com/<ton_user>/<ton_repo>/main/data/articles.csv";
+const CSV_URL = "https://raw.githubusercontent.com/mich59139/AHPV/main/data/articles.csv";
 let articles = [];
 
 Papa.parse(CSV_URL, {
@@ -18,18 +18,25 @@ function render(data) {
     return;
   }
 
+  const term = document.getElementById("search").value.toLowerCase();
+  const filtered = data.filter(row =>
+    Object.values(row).some(val => val.toLowerCase().includes(term))
+  );
+
   let html = `<table><thead><tr>
+    <th>Année</th>
+    <th>Numéro</th>
     <th>Titre</th>
     <th>Auteur(s)</th>
-    <th>Année</th>
     <th>Thème(s)</th>
   </tr></thead><tbody>`;
 
-  html += data.map(row => `
+  html += filtered.map(row => `
     <tr>
+      <td>\${row["Année"] || ""}</td>
+      <td>\${row["Numéro"] || ""}</td>
       <td>\${row["Titre"] || ""}</td>
       <td>\${row["Auteur(s)"] || ""}</td>
-      <td>\${row["Année"] || ""}</td>
       <td>\${row["Theme(s)"] || ""}</td>
     </tr>
   `).join('');
@@ -38,18 +45,12 @@ function render(data) {
   container.innerHTML = html;
 }
 
-document.getElementById("search").addEventListener("input", e => {
-  const term = e.target.value.toLowerCase();
-  const filtered = articles.filter(row =>
-    Object.values(row).some(val => val.toLowerCase().includes(term))
-  );
-  render(filtered);
-});
-
 function toggleForm() {
   const form = document.getElementById("form-container");
   form.style.display = form.style.display === "none" ? "block" : "none";
 }
+
+document.getElementById("search").addEventListener("input", () => render(articles));
 
 document.getElementById("form-article").addEventListener("submit", e => {
   e.preventDefault();
@@ -62,5 +63,10 @@ document.getElementById("form-article").addEventListener("submit", e => {
   const row = Object.values(data).join(",");
   const csv = header + "\n" + row;
   document.getElementById("preview").textContent = csv;
-  navigator.clipboard.writeText(csv).then(() => alert("Ligne copiée ! Collez-la dans votre fichier articles.csv sur GitHub."));
+  navigator.clipboard.writeText(csv).then(() => alert("Ligne copiée ! Collez-la dans votre fichier CSV sur GitHub."));
+
+  // Affichage local immédiat
+  articles.unshift(data);
+  render(articles);
+  form.reset();
 });

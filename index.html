@@ -3,34 +3,33 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Catalogue des articles (GitHub CSV)</title>
+  <title>Catalogue des articles</title>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <h1>Catalogue des articles</h1>
   <input type="text" id="search" placeholder="Rechercher...">
-  
-    <button onclick="toggleForm()">➕ Ajouter un article</button>
+  <button onclick="toggleForm()">➕ Ajouter un article</button>
 
-    <div id="form-container" style="display:none; margin-top:20px;">
-      <h2>Nouvel article</h2>
-      <form id="form-article">
-        <input name="Année" placeholder="Année" required />
-        <input name="Numéro" placeholder="Numéro" required />
-        <input name="Titre" placeholder="Titre" required />
-        <input name="Page(s)" placeholder="Page(s)" />
-        <input name="Auteur(s)" placeholder="Auteur(s)" />
-        <input name="Ville(s)" placeholder="Ville(s)" />
-        <input name="Theme(s)" placeholder="Thème(s)" />
-        <input name="Epoque" placeholder="Époque" />
-        <button type="submit">Préparer</button>
-      </form>
-      <pre id="preview" style="white-space: pre-wrap;"></pre>
-    </div>
+  <div id="form-container" style="display:none; margin-top:20px;">
+    <h2>Nouvel article</h2>
+    <form id="form-article">
+      <input name="Année" placeholder="Année" required />
+      <input name="Numéro" placeholder="Numéro" required />
+      <input name="Titre" placeholder="Titre" required />
+      <input name="Page(s)" placeholder="Page(s)" />
+      <input name="Auteur(s)" placeholder="Auteur(s)" />
+      <input name="Ville(s)" placeholder="Ville(s)" />
+      <input name="Theme(s)" placeholder="Thème(s)" />
+      <input name="Epoque" placeholder="Époque" />
+      <button type="submit">Préparer</button>
+    </form>
+    <pre id="preview" style="white-space: pre-wrap;"></pre>
+  </div>
 
-    <div id="articles"></div>
-    
+  <div id="articles" style="margin-top: 20px;"></div>
+
   <script src="app.js"></script>
 </body>
 </html>
