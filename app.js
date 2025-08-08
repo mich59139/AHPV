@@ -1,5 +1,5 @@
 
-const CSV_URL = "https://raw.githubusercontent.com/mich59139/AHPV/main/data/articles.csv";
+const CSV_URL = "https://raw.githubusercontent.com/<ton_user>/<ton_repo>/main/data/articles.csv";
 let articles = [];
 
 Papa.parse(CSV_URL, {
