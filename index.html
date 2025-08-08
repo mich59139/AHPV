@@ -2,63 +2,34 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <title>Articles</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <title>Articles - Lecture CSV</title>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Catalogue des articles</h1>
-<button onclick="openDrawer()">➕ Ajouter un article</button>
-<div id="drawer" class="drawer"><div class="drawer-content"><button onclick="closeDrawer()">✖</button><h2 id="drawer-title">Nouvel article</h2><form id="drawer-form"></form><pre id="preview"></pre><a id="github-pr-link" target="_blank" style="display: none;">Créer une PR sur GitHub</a></div></div>
+  <h1>Liste des articles</h1>
 
-  
-<div id="filters">
-  <label>Année:
-    <select id="filter-annee"><option value="">(toutes)</option></select>
-  </label>
-  <label>Ville:
-    <select id="filter-ville"><option value="">(toutes)</option></select>
-  </label>
-  <label>Thème:
-    <select id="filter-theme"><option value="">(tous)</option></select>
-  </label>
-</div>
+  <input type="text" id="search" placeholder="Rechercher...">
+  <button onclick="toggleForm()">➕ Ajouter un article</button>
 
-<input type="text" id="search" placeholder="Rechercher..." />
-
-<label for="limit">Afficher :</label>
-<select id="limit">
-  <option value="50">50</option>
-  <option value="100">100</option>
-  <option value="all" selected>Tous</option>
-</select>
-
-
-  <div style="margin: 10px 0;">
-    <button onclick="showTable()">🗒️ Vue Tableau</button>
-    <button onclick="showCards()">🗂️ Vue Cartes</button>
+  <div id="add-form" style="display:none;">
+    <h2>Nouvel article</h2>
+    <form id="form-article">
+      <input name="Année" placeholder="Année" required />
+      <input name="Numéro" placeholder="Numéro" required />
+      <input name="Titre" placeholder="Titre" required />
+      <input name="Page(s)" placeholder="Page(s)" />
+      <input name="Auteur(s)" placeholder="Auteur(s)" />
+      <input name="Ville(s)" placeholder="Ville(s)" />
+      <input name="Theme(s)" placeholder="Thème(s)" />
+      <input name="Epoque" placeholder="Époque" />
+      <button type="submit">Préparer pour ajout</button>
+    </form>
+    <pre id="preview"></pre>
   </div>
 
-  <div id="table-view"></div>
-  <div id="card-view" style="display: none;"></div>
-
-  <h2>Ajouter un article</h2>
-  <form id="add-form">
-    <input name="Année" placeholder="Année" required />
-    <input name="Numéro" placeholder="Numéro" required />
-    <input name="Titre" placeholder="Titre" required />
-    <input name="Page(s)" placeholder="Page(s)" />
-    <input name="Auteur(s)" placeholder="Auteur(s)" />
-    <input name="Ville(s)" placeholder="Ville(s)" />
-    <input name="Theme(s)" placeholder="Theme(s)" />
-    <input name="Epoque" placeholder="Epoque" />
-    <button type="submit">Préparer</button>
-  </form>
-  <pre id="preview"></pre>
-<a id="github-pr-link" target="_blank" style="display: none;">Créer une PR sur GitHub</a>
-<a href="https://github.com/<user>/<repo>/edit/main/data/articles.csv" target="_blank">Modifier le fichier articles.csv sur GitHub</a>
-
+  <div id="articles"></div>
   <script src="app.js"></script>
 </body>
 </html>
