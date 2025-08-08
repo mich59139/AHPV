@@ -9,6 +9,8 @@
 </head>
 <body>
   <h1>Catalogue des articles</h1>
+<button onclick="openDrawer()">➕ Ajouter un article</button>
+<div id="drawer" class="drawer"><div class="drawer-content"><button onclick="closeDrawer()">✖</button><h2 id="drawer-title">Nouvel article</h2><form id="drawer-form"></form><pre id="preview"></pre><a id="github-pr-link" target="_blank" style="display: none;">Créer une PR sur GitHub</a></div></div>
 
   <input type="text" id="search" placeholder="Rechercher..." />
 

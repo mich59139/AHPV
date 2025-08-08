@@ -28,7 +28,7 @@ function displayTable(data) {
     <table><thead><tr>
       ${Object.keys(data[0]).map(k => `<th>${k}</th>`).join('')}
     </tr></thead><tbody>
-      ${data.map(row => `<tr>${Object.values(row).map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}
+      ${data.map(row => `<tr>${Object.values(row).map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('') + data.map(row => `<tr><td colspan='100%'><a href='#' onclick='openDrawer(${JSON.stringify(row)})'>✏ Modifier</a></td></tr>`).join('')}
     </tbody></table>
   `;
 }
@@ -112,3 +112,150 @@ function setAutocompleteFields(data) {
     if (input) input.setAttribute('list', datalistId);
   }
 }
+
+
+let currentPage = 1;
+let rowsPerPage = 50;
+let currentSort = { column: null, direction: 'asc' };
+
+document.getElementById("limit").addEventListener("change", (e) => {
+  const val = e.target.value;
+  rowsPerPage = val === "all" ? articles.length : parseInt(val);
+  currentPage = 1;
+  renderPaginatedAndSorted();
+});
+
+function renderPaginatedAndSorted() {
+  let sorted = [...articles];
+  if (currentSort.column) {
+    sorted.sort((a, b) => {
+      let valA = a[currentSort.column] || '';
+      let valB = b[currentSort.column] || '';
+      if (!isNaN(valA) && !isNaN(valB)) {
+        valA = parseFloat(valA);
+        valB = parseFloat(valB);
+      }
+      return currentSort.direction === 'asc'
+        ? valA > valB ? 1 : -1
+        : valA < valB ? 1 : -1;
+    });
+  }
+
+  const start = (currentPage - 1) * rowsPerPage;
+  const paginated = sorted.slice(start, start + rowsPerPage);
+  displayTable(paginated);
+  displayCards(paginated);
+  setAutocompleteFields(articles);
+  renderPaginationControls(sorted.length);
+}
+
+function renderPaginationControls(total) {
+  const container = document.getElementById("pagination-controls") || createPaginationContainer();
+  container.innerHTML = `
+    <button ${currentPage <= 1 ? 'disabled' : ''} onclick="changePage(-1)">◀ Précédent</button>
+    <span> Page ${currentPage} </span>
+    <button ${(currentPage * rowsPerPage) >= total ? 'disabled' : ''} onclick="changePage(1)">Suivant ▶</button>
+  `;
+}
+
+function createPaginationContainer() {
+  const div = document.createElement("div");
+  div.id = "pagination-controls";
+  div.style.marginTop = "10px";
+  document.getElementById("table-view").after(div);
+  return div;
+}
+
+function changePage(delta) {
+  currentPage += delta;
+  renderPaginatedAndSorted();
+}
+
+function displayTable(data) {
+  const container = document.getElementById('table-view');
+  if (!data.length) return container.innerHTML = "<p>Aucun résultat</p>";
+
+  const headers = Object.keys(data[0]);
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          ${headers.map(k => `<th onclick="sortBy('${k}')">${k} ${currentSort.column === k ? (currentSort.direction === 'asc' ? '▲' : '▼') : ''}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>
+        ${data.map(row => `<tr>${headers.map(h => `<td>${row[h] || ''}</td>`).join('')}</tr>`).join('') + data.map(row => `<tr><td colspan='100%'><a href='#' onclick='openDrawer(${JSON.stringify(row)})'>✏ Modifier</a></td></tr>`).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function sortBy(column) {
+  if (currentSort.column === column) {
+    currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+  } else {
+    currentSort.column = column;
+    currentSort.direction = 'asc';
+  }
+  renderPaginatedAndSorted();
+}
+
+
+function openDrawer(data = {}) {
+  const drawer = document.getElementById("drawer");
+  const form = document.getElementById("drawer-form");
+  const fields = ['Année', 'Numéro', 'Titre', 'Page(s)', 'Auteur(s)', 'Ville(s)', 'Theme(s)', 'Epoque'];
+  form.innerHTML = fields.map(f => 
+    `<label>${f}<input name="${f}" value="${data[f] || ''}" ${f === 'Année' || f === 'Numéro' || f === 'Titre' ? 'required' : ''}></label>`
+  ).join('') + '<button type="submit">Préparer</button><button type="button" id="delete-btn" style="margin-left:10px; display:none;">❌ Supprimer</button>';
+  drawer.classList.add("open");
+  document.getElementById("drawer-title").textContent = data["Titre"] ? "Modifier l'article" : "Nouvel article";
+}
+
+function closeDrawer() {
+  document.getElementById("drawer").classList.remove("open");
+}
+
+document.getElementById("drawer-form").addEventListener("submit", e => {
+  e.preventDefault();
+  const form = e.target;
+  const row = Array.from(form.elements)
+    .filter(el => el.name)
+    .reduce((acc, el) => ({ ...acc, [el.name]: el.value }), {});
+  const csvLine = Object.values(row).join(",");
+  const header = Object.keys(row).join(",");
+  const fullCSV = `${header}
+${csvLine}`;
+  document.getElementById("preview").textContent = fullCSV;
+  const encodedContent = encodeURIComponent(fullCSV);
+  const githubPRUrl = `https://github.com/<user>/<repo>/new/main/data?filename=new_article.csv&value=${encodedContent}`;
+  const link = document.getElementById("github-pr-link");
+  link.href = githubPRUrl;
+  link.style.display = 'inline-block';
+});
+
+
+document.getElementById("drawer-form").addEventListener("reset", closeDrawer);
+
+document.getElementById("delete-btn").addEventListener("click", () => {
+  const form = document.getElementById("drawer-form");
+  const row = Array.from(form.elements)
+    .filter(el => el.name)
+    .reduce((acc, el) => ({ ...acc, [el.name]: el.value }), {});
+  const csvLine = Object.values(row).join(",");
+  const header = Object.keys(row).join(",");
+  const fullCSV = `# Suppression demandée\n${header}\n${csvLine}`;
+  document.getElementById("preview").textContent = fullCSV;
+  const encodedContent = encodeURIComponent(fullCSV);
+  const githubPRUrl = `https://github.com/<user>/<repo>/new/main/data?filename=suppression_article.csv&value=${encodedContent}`;
+  const link = document.getElementById("github-pr-link");
+  link.href = githubPRUrl;
+  link.style.display = 'inline-block';
+  alert("Un fichier de suppression a été préparé. Ouvre la PR pour valider.");
+});
+
+const openDrawerOriginal = openDrawer;
+openDrawer = function(data = {}) {
+  openDrawerOriginal(data);
+  document.getElementById("delete-btn").style.display = data["Titre"] ? "inline-block" : "none";
+};

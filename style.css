@@ -42,3 +42,24 @@ thead {
 tr:nth-child(even) {
   background-color: #fafafa;
 }
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: -100%;
+  width: 400px;
+  height: 100%;
+  background: #fff;
+  border-left: 1px solid #ccc;
+  box-shadow: -4px 0 10px rgba(0,0,0,0.1);
+  transition: right 0.3s ease;
+  z-index: 1000;
+  padding: 20px;
+  overflow-y: auto;
+}
+.drawer.open {
+  right: 0;
+}
+.drawer-content button {
+  margin-bottom: 10px;
+}
