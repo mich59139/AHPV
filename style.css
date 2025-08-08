@@ -63,3 +63,25 @@ tr:nth-child(even) {
 .drawer-content button {
   margin-bottom: 10px;
 }
+
+th:nth-child(1), td:nth-child(1) { min-width: 80px; }
+th:nth-child(2), td:nth-child(2) { min-width: 150px; }
+
+.drawer-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.drawer-content form {
+  display: flex;
+  flex-direction: column;
+}
+
+.drawer-content label {
+  margin-bottom: 10px;
+}
+
+#preview {
+  margin-top: 10px;
+  white-space: pre-wrap;
+}

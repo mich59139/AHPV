@@ -126,7 +126,7 @@ document.getElementById("limit").addEventListener("change", (e) => {
 });
 
 function renderPaginatedAndSorted() {
-  let sorted = [...articles];
+  let sorted = applyFilters([...articles]);
   if (currentSort.column) {
     sorted.sort((a, b) => {
       let valA = a[currentSort.column] || '';
@@ -205,7 +205,7 @@ function openDrawer(data = {}) {
   const drawer = document.getElementById("drawer");
   const form = document.getElementById("drawer-form");
   const fields = ['Année', 'Numéro', 'Titre', 'Page(s)', 'Auteur(s)', 'Ville(s)', 'Theme(s)', 'Epoque'];
-  form.innerHTML = fields.map(f => 
+  form.innerHTML = `<div id="form-fields">` + fields.map(f => 
     `<label>${f}<input name="${f}" value="${data[f] || ''}" ${f === 'Année' || f === 'Numéro' || f === 'Titre' ? 'required' : ''}></label>`
   ).join('') + '<button type="submit">Préparer</button><button type="button" id="delete-btn" style="margin-left:10px; display:none;">❌ Supprimer</button>';
   drawer.classList.add("open");
@@ -259,3 +259,37 @@ openDrawer = function(data = {}) {
   openDrawerOriginal(data);
   document.getElementById("delete-btn").style.display = data["Titre"] ? "inline-block" : "none";
 };
+
+function populateFilterOptions(field, selectorId) {
+  const values = [...new Set(articles.map(a => a[field]).filter(Boolean))].sort();
+  const select = document.getElementById(selectorId);
+  select.innerHTML = '<option value="">(toutes)</option>' + values.map(v => `<option value="${v}">${v}</option>`).join('');
+}
+
+['filter-annee', 'filter-ville', 'filter-theme'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    currentPage = 1;
+    renderPaginatedAndSorted();
+  });
+});
+
+function applyFilters(data) {
+  const annee = document.getElementById('filter-annee').value;
+  const ville = document.getElementById('filter-ville').value;
+  const theme = document.getElementById('filter-theme').value;
+  const search = document.getElementById('search').value.toLowerCase();
+
+  return data.filter(row => {
+    const matchesSearch = Object.values(row).some(val => val.toLowerCase().includes(search));
+    const matchesAnnee = !annee || row["Année"] === annee;
+    const matchesVille = !ville || row["Ville(s)"] === ville;
+    const matchesTheme = !theme || row["Theme(s)"] === theme;
+    return matchesSearch && matchesAnnee && matchesVille && matchesTheme;
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  populateFilterOptions("Année", "filter-annee");
+  populateFilterOptions("Ville(s)", "filter-ville");
+  populateFilterOptions("Theme(s)", "filter-theme");
+});
