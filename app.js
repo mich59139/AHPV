@@ -1,26 +1,41 @@
 
-const CSV_URL = 'data/articles.csv';
+const CSV_URL = "https://raw.githubusercontent.com/<ton_user>/<ton_repo>/main/data/articles.csv";
 let articles = [];
 
 Papa.parse(CSV_URL, {
   download: true,
   header: true,
-  complete: (results) => {
+  complete: function(results) {
     articles = results.data;
-    renderArticles(articles);
+    render(articles);
   }
 });
 
-function renderArticles(data) {
+function render(data) {
   const container = document.getElementById("articles");
-  container.innerHTML = data.map(row => `
-    <div class="card">
-      <h3>${row["Titre"]}</h3>
-      <p><strong>Auteur(s):</strong> ${row["Auteur(s)"] || ""}</p>
-      <p><strong>Année:</strong> ${row["Année"] || ""}</p>
-      <p><strong>Thème:</strong> ${row["Theme(s)"] || ""}</p>
-    </div>
+  if (!data.length) {
+    container.innerHTML = "<p>Aucun article trouvé.</p>";
+    return;
+  }
+
+  let html = `<table><thead><tr>
+    <th>Titre</th>
+    <th>Auteur(s)</th>
+    <th>Année</th>
+    <th>Thème(s)</th>
+  </tr></thead><tbody>`;
+
+  html += data.map(row => `
+    <tr>
+      <td>\${row["Titre"] || ""}</td>
+      <td>\${row["Auteur(s)"] || ""}</td>
+      <td>\${row["Année"] || ""}</td>
+      <td>\${row["Theme(s)"] || ""}</td>
+    </tr>
   `).join('');
+
+  html += "</tbody></table>";
+  container.innerHTML = html;
 }
 
 document.getElementById("search").addEventListener("input", e => {
@@ -28,11 +43,11 @@ document.getElementById("search").addEventListener("input", e => {
   const filtered = articles.filter(row =>
     Object.values(row).some(val => val.toLowerCase().includes(term))
   );
-  renderArticles(filtered);
+  render(filtered);
 });
 
 function toggleForm() {
-  const form = document.getElementById("add-form");
+  const form = document.getElementById("form-container");
   form.style.display = form.style.display === "none" ? "block" : "none";
 }
 
@@ -45,7 +60,7 @@ document.getElementById("form-article").addEventListener("submit", e => {
   }
   const header = Object.keys(data).join(",");
   const row = Object.values(data).join(",");
-  const preview = header + "\n" + row;
-  document.getElementById("preview").textContent = preview;
-  navigator.clipboard.writeText(preview).then(() => alert("Ligne copiée ! Ajoute-la manuellement au CSV."));
+  const csv = header + "\n" + row;
+  document.getElementById("preview").textContent = csv;
+  navigator.clipboard.writeText(csv).then(() => alert("Ligne copiée ! Collez-la dans votre fichier articles.csv sur GitHub."));
 });
