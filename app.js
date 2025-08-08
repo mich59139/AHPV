@@ -13,14 +13,14 @@ Papa.parse(CSV_URL, {
 
 function renderArticles(data) {
   const container = document.getElementById("articles");
-  container.innerHTML = data.map(row => \`
+  container.innerHTML = data.map(row => `
     <div class="card">
-      <h3>\${row["Titre"]}</h3>
-      <p><strong>Auteur(s):</strong> \${row["Auteur(s)"] || ""}</p>
-      <p><strong>Année:</strong> \${row["Année"] || ""}</p>
-      <p><strong>Thème:</strong> \${row["Theme(s)"] || ""}</p>
+      <h3>${row["Titre"]}</h3>
+      <p><strong>Auteur(s):</strong> ${row["Auteur(s)"] || ""}</p>
+      <p><strong>Année:</strong> ${row["Année"] || ""}</p>
+      <p><strong>Thème:</strong> ${row["Theme(s)"] || ""}</p>
     </div>
-  \`).join('');
+  `).join('');
 }
 
 document.getElementById("search").addEventListener("input", e => {
@@ -45,7 +45,7 @@ document.getElementById("form-article").addEventListener("submit", e => {
   }
   const header = Object.keys(data).join(",");
   const row = Object.values(data).join(",");
-  const full = header + "\n" + row;
-  document.getElementById("preview").textContent = full;
-  navigator.clipboard.writeText(full).then(() => alert("Ligne copiée ! Ajoute-la manuellement au CSV."));
+  const preview = header + "\n" + row;
+  document.getElementById("preview").textContent = preview;
+  navigator.clipboard.writeText(preview).then(() => alert("Ligne copiée ! Ajoute-la manuellement au CSV."));
 });
