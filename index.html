@@ -3,38 +3,43 @@
 <head>
   <meta charset="UTF-8">
   <title>Catalogue des articles</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body>
   <h1>Catalogue des articles</h1>
 
-  <div class="toolbar">
+  <div id="toolbar" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:10px 0;">
     <label>Année :
-      <select id="filter-annee"><option value="">(toutes)</option></select>
-    </label>
-    <label>Numéro :
-      <select id="filter-numero"><option value="">(tous)</option></select>
-    </label>
-    <input type="text" id="search" placeholder="Rechercher…">
-    <label>Afficher :
-      <select id="limit">
-        <option value="50">50</option>
-        <option value="100">100</option>
-        <option value="all" selected>Tous</option>
+      <select id="filter-annee">
+        <option value="">(toutes)</option>
       </select>
     </label>
-    <button id="toggle-add" type="button">➕ Ajouter un article</button>
+
+    <label>Numéro :
+      <select id="filter-numero">
+        <option value="">(tous)</option>
+      </select>
+    </label>
+
+    <label>Afficher :
+      <select id="limit">
+        <option value="50" selected>50</option>
+        <option value="100">100</option>
+        <option value="all">Tous</option>
+      </select>
+    </label>
+
+    <input type="text" id="search" placeholder="Rechercher…">
+
+    <button id="toggle-add">➕ Ajouter un article</button>
   </div>
 
-  <div id="form-container" class="drawer hidden">
+  <!-- Drawer d’ajout -->
+  <div id="form-container" class="drawer">
     <div class="drawer-content">
-      <div class="drawer-header">
-        <h2>Nouvel article</h2>
-        <button id="close-drawer" type="button" title="Fermer">✖</button>
-      </div>
-      <form id="form-article" class="grid">
+      <button id="close-drawer" title="Fermer">✖</button>
+      <h2>Nouvel article</h2>
+      <form id="form-article">
         <input name="Année"  placeholder="Année" required />
         <input name="Numéro" placeholder="Numéro" required />
         <input name="Titre"  placeholder="Titre" required />
@@ -43,25 +48,22 @@
         <input name="Ville(s)"  placeholder="Ville(s)" />
         <input name="Theme(s)" placeholder="Thème(s)" />
         <input name="Epoque"   placeholder="Période (Epoque)" />
-        <div class="actions">
-          <button type="submit">Ajouter au lot</button>
-          <button id="download-batch" type="button">Télécharger le lot (.csv)</button>
-          <button id="copy-batch" type="button">Copier le lot</button>
-          <button id="reset-batch" type="button">Vider le lot</button>
-          <span id="batch-count">0 en attente</span>
-        </div>
+        <button type="submit">Ajouter au lot</button>
       </form>
-      <pre id="batch-preview" class="preview"></pre>
+
+      <div style="margin:8px 0;">
+        <button id="download-batch">Télécharger le lot (.csv)</button>
+        <button id="copy-batch">Copier le lot</button>
+        <button id="reset-batch">Vider le lot</button>
+        <span id="batch-count" style="margin-left:8px;opacity:.7;">0 en attente</span>
+      </div>
+      <pre id="batch-preview" style="white-space:pre-wrap;"></pre>
     </div>
   </div>
 
-  <div id="count" class="count"></div>
   <div id="articles"></div>
-  <div id="pagination" class="pagination"></div>
 
-  <script>
-    const CSV_URL = "https://raw.githubusercontent.com/mich59139/AHPV/main/data/articles.csv?" + Date.now();
-  </script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="app.js" defer></script>
 </body>
 </html>
