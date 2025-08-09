@@ -1,208 +1,164 @@
+// --- Config ---
+const CSV_URL = "https://raw.githubusercontent.com/mich59139/AHPV/main/data/articles.csv?" + Date.now();
 
-const CSV_URL = "https://raw.githubusercontent.com/mich59139/AHPV/main/data/articles.csv";
-
-// State
-let rows = [];
+// --- State ---
+let articles = [];
 let filtered = [];
-let sortState = { col: null, dir: 'asc' };
 let currentPage = 1;
 let rowsPerPage = 'all';
+let currentSort = { col: null, dir: 'asc' };
 
-// Elements
-const tableContainer = document.getElementById('table-container');
-const paginationEl = document.getElementById('pagination');
-const searchEl = document.getElementById('search');
-const limitEl = document.getElementById('limit');
-const drawerEl = document.getElementById('drawer');
-const addBtn = document.getElementById('addBtn');
-const closeDrawerBtn = document.getElementById('closeDrawer');
-const formEl = document.getElementById('articleForm');
-const previewEl = document.getElementById('preview');
+// --- Utils ---
+const norm = s => (s ?? "").toString().replace(/\u00A0/g, " ").trim();
+const uniqueSorted = arr => Array.from(new Set(arr.filter(Boolean).map(norm))).sort((a,b)=>a.localeCompare(b));
 
-// Load CSV
+// --- Load CSV ---
 Papa.parse(CSV_URL, {
   download: true,
   header: true,
+  encoding: "UTF-8",
   skipEmptyLines: true,
   complete: (res) => {
-    rows = res.data.map(normalizeRow);
-    filtered = rows.slice();
-    populateDatalists(rows);
-    render();
+    articles = (res.data || []).map(row => ({
+      "Année": norm(row["Année"]),
+      "Numéro": norm(row["Numéro"]),
+      "Titre": norm(row["Titre"]),
+      "Page(s)": norm(row["Page(s)"]),
+      "Auteur(s)": norm(row["Auteur(s)"]),
+      "Ville(s)": norm(row["Ville(s)"]),
+      "Theme(s)": norm(row["Theme(s)"]),
+      "Epoque": norm(row["Epoque"]),
+    })).filter(r => Object.values(r).some(v => v));
+    document.getElementById('count').textContent = `${articles.length} articles`;
+    populateDatalists(articles);
+    applyView();
   },
   error: (err) => {
-    tableContainer.innerHTML = '<p style="color:#b91c1c">Erreur de chargement du CSV.</p>';
-    console.error(err);
+    document.getElementById('articles').innerHTML = `<p style="color:red;">Erreur de lecture du CSV : ${err}</p>`;
   }
 });
 
-function normalizeRow(row) {
-  // Ensure all needed keys exist and are strings
-  const keys = ['Année','Numéro','Titre','Page(s)','Auteur(s)','Ville(s)','Theme(s)','Epoque'];
-  const obj = {};
-  keys.forEach(k => obj[k] = (row[k] ?? '').toString());
-  return obj;
+function populateDatalists(data){
+  const setList = (id, vals) => {
+    const el = document.getElementById(id);
+    el.innerHTML = uniqueSorted(vals).map(v=>`<option value="${v}">`).join("");
+  };
+  setList("dl-auteurs", data.map(d=>d["Auteur(s)"]));
+  setList("dl-villes", data.map(d=>d["Ville(s)"]));
+  setList("dl-themes", data.map(d=>d["Theme(s)"]));
+  setList("dl-epoques", data.map(d=>d["Epoque"]));
 }
 
-function populateDatalists(data) {
-  const uniques = (key) => Array.from(new Set(data.map(r => r[key]).filter(Boolean))).sort();
-  fillDatalist('anneesList', uniques('Année'));
-  fillDatalist('numerosList', uniques('Numéro'));
-  fillDatalist('auteursList', uniques('Auteur(s)'));
-  fillDatalist('villesList', uniques('Ville(s)'));
-  fillDatalist('themesList', uniques('Theme(s)'));
-  fillDatalist('epoquesList', uniques('Epoque'));
-}
+// --- Rendering ---
+function applyView(){
+  const term = norm(document.getElementById('search').value).toLowerCase();
+  filtered = term ? articles.filter(r => Object.values(r).some(v => v.toLowerCase().includes(term))) : [...articles];
 
-function fillDatalist(id, values) {
-  const dl = document.getElementById(id);
-  dl.innerHTML = values.map(v => '<option value="'+escapeHtml(v)+'"></option>').join('');
-}
-
-function escapeHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// Rendering
-function render() {
-  // Search filter
-  const q = (searchEl.value || '').toLowerCase();
-  filtered = rows.filter(r => Object.values(r).some(v => (v||'').toLowerCase().includes(q)));
-
-  // Sort
-  if (sortState.col) {
-    filtered.sort((a,b) => {
-      const A = (a[sortState.col]||'').toLowerCase();
-      const B = (b[sortState.col]||'').toLowerCase();
-      if (A < B) return sortState.dir === 'asc' ? -1 : 1;
-      if (A > B) return sortState.dir === 'asc' ? 1 : -1;
-      return 0;
+  // sort
+  if (currentSort.col){
+    filtered.sort((a,b)=>{
+      const A = a[currentSort.col] || "", B = b[currentSort.col] || "";
+      const cmp = isFinite(A) && isFinite(B) ? (Number(A)-Number(B)) : A.localeCompare(B);
+      return currentSort.dir === 'asc' ? cmp : -cmp;
     });
   }
 
-  // Pagination
-  const perPage = rowsPerPage === 'all' ? filtered.length : parseInt(rowsPerPage,10);
-  const totalPages = Math.max(1, Math.ceil(filtered.length / Math.max(1, perPage)));
-  if (currentPage > totalPages) currentPage = totalPages;
-  const start = rowsPerPage === 'all' ? 0 : (currentPage-1) * perPage;
-  const end = rowsPerPage === 'all' ? filtered.length : start + perPage;
+  renderTable();
+}
+
+function renderTable(){
+  const container = document.getElementById('articles');
+  if (!filtered.length){
+    container.innerHTML = "<p>Aucun article trouvé.</p>";
+    return;
+  }
+  const headers = ["Année","Numéro","Titre","Auteur(s)","Theme(s)","Epoque"];
+  const start = rowsPerPage === 'all' ? 0 : (currentPage-1) * Number(rowsPerPage);
+  const end = rowsPerPage === 'all' ? filtered.length : start + Number(rowsPerPage);
   const pageRows = filtered.slice(start, end);
 
-  // Table
-  const table = document.createElement('table');
-  const thead = document.createElement('thead');
-  const headerRow = document.createElement('tr');
+  const th = h => `<th class="sortable" onclick="toggleSort('${h}')">${h === 'Epoque' ? 'Période' : h} ${currentSort.col === h ? (currentSort.dir==='asc'?'▲':'▼') : ''}</th>`;
 
-  const cols = [
-    { key:'Année',   title:'Année',   className:'min-year' },
-    { key:'Numéro',  title:'Numéro',  className:'min-num' },
-    { key:'Titre',   title:'Titre' },
-    { key:'Auteur(s)', title:'Auteur(s)' },
-    { key:'Theme(s)',  title:'Thème(s)' },
-  ];
+  let html = `<table><thead><tr>${headers.map(th).join("")}</tr></thead><tbody>`;
+  html += pageRows.map(r => `<tr>
+    <td>${r["Année"]||""}</td>
+    <td>${r["Numéro"]||""}</td>
+    <td>${r["Titre"]||""}</td>
+    <td>${r["Auteur(s)"]||""}</td>
+    <td>${r["Theme(s)"]||""}</td>
+    <td>${r["Epoque"]||""}</td>
+  </tr>`).join("");
+  html += "</tbody></table>";
 
-  cols.forEach(col => {
-    const th = document.createElement('th');
-    th.textContent = col.title + (sortState.col === col.key ? (sortState.dir==='asc'?' ▲':' ▼') : '');
-    if (col.className) th.className = col.className;
-    th.addEventListener('click', () => toggleSort(col.key));
-    headerRow.appendChild(th);
-  });
-  thead.appendChild(headerRow);
-  table.appendChild(thead);
+  // pager
+  const totalPages = rowsPerPage === 'all' ? 1 : Math.max(1, Math.ceil(filtered.length / Number(rowsPerPage)));
+  const pager = rowsPerPage === 'all' ? "" : `<div class="pager">
+      <button ${currentPage<=1?'disabled':''} onclick="gotoPage(${currentPage-1})">◀ Précédent</button>
+      <span>Page ${currentPage} / ${totalPages}</span>
+      <button ${currentPage>=totalPages?'disabled':''} onclick="gotoPage(${currentPage+1})">Suivant ▶</button>
+    </div>`;
 
-  const tbody = document.createElement('tbody');
-  pageRows.forEach(r => {
-    const tr = document.createElement('tr');
-    cols.forEach(col => {
-      const td = document.createElement('td');
-      td.textContent = r[col.key] || '';
-      if (col.className) td.className = col.className;
-      tr.appendChild(td);
-    });
-    tbody.appendChild(tr);
-  });
-  table.appendChild(tbody);
-
-  tableContainer.innerHTML = '';
-  tableContainer.appendChild(table);
-
-  // Pagination controls
-  paginationEl.innerHTML = '';
-  if (rowsPerPage !== 'all') {
-    const prev = document.createElement('button');
-    prev.className = 'btn';
-    prev.textContent = '◀ Précédent';
-    prev.disabled = currentPage <= 1;
-    prev.onclick = () => { currentPage--; render(); };
-
-    const next = document.createElement('button');
-    next.className = 'btn';
-    next.textContent = 'Suivant ▶';
-    next.disabled = currentPage >= totalPages;
-    next.onclick = () => { currentPage++; render(); };
-
-    const span = document.createElement('span');
-    span.textContent = `Page ${currentPage} / ${totalPages}`;
-
-    paginationEl.appendChild(prev);
-    paginationEl.appendChild(span);
-    paginationEl.appendChild(next);
-  }
+  container.innerHTML = html + pager;
 }
 
-function toggleSort(colKey) {
-  if (sortState.col === colKey) {
-    sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+function toggleSort(col){
+  if (currentSort.col === col){
+    currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
   } else {
-    sortState.col = colKey;
-    sortState.dir = 'asc';
+    currentSort.col = col;
+    currentSort.dir = 'asc';
   }
-  render();
+  applyView();
 }
+function gotoPage(p){ currentPage = p; renderTable(); }
 
-// Events
-searchEl.addEventListener('input', () => { currentPage = 1; render(); });
-limitEl.addEventListener('change', (e) => {
-  rowsPerPage = e.target.value;
-  currentPage = 1;
-  render();
-});
-addBtn.addEventListener('click', () => openDrawer());
-closeDrawerBtn.addEventListener('click', () => drawerEl.classList.remove('open'));
+// --- Events ---
+document.getElementById('search').addEventListener('input', () => { currentPage = 1; applyView(); });
+document.getElementById('limit').addEventListener('change', (e)=>{ rowsPerPage = e.target.value; currentPage = 1; renderTable(); });
 
-// Drawer actions
-function openDrawer(prefill={}) {
-  formEl.reset();
-  // prefill inputs
-  Array.from(formEl.elements).forEach(el => {
-    if (el.name && prefill[el.name]) el.value = prefill[el.name];
-  });
-  document.getElementById('drawerTitle').textContent = prefill.Titre ? "Modifier l'article" : "Nouvel article";
-  previewEl.textContent = '';
-  drawerEl.classList.add('open');
-}
+// --- Drawer ---
+const drawer = document.getElementById('form-container');
+document.getElementById('toggle-form').addEventListener('click', ()=>drawer.classList.remove('hidden'));
+document.getElementById('close-form').addEventListener('click', ()=>drawer.classList.add('hidden'));
 
-formEl.addEventListener('submit', (e) => {
+// --- Batch entry ---
+const batch = [];
+const headers = ["Année","Numéro","Titre","Page(s)","Auteur(s)","Ville(s)","Theme(s)","Epoque"];
+const batchPreview = document.getElementById('batch-preview');
+const batchCount = document.getElementById('batch-count');
+
+document.getElementById('form-article').addEventListener('submit', (e)=>{
   e.preventDefault();
-  const data = {};
-  Array.from(formEl.elements).forEach(el => { if (el.name) data[el.name] = el.value || ''; });
-
-  const headers = Object.keys(data);
-  const csv = headers.join(',') + "\\n" + headers.map(h => escapeCsv(data[h])).join(',');
-  previewEl.textContent = csv;
-  // Add locally to table for visual feedback
-  rows.unshift(data);
-  render();
+  const row = {};
+  for (const el of e.target.elements) if (el.name) row[el.name] = norm(el.value);
+  batch.push(row);
+  e.target.reset();
+  updateBatchPreview();
 });
 
-document.getElementById('copyBtn').addEventListener('click', () => {
-  if (!previewEl.textContent.trim()) return alert("Rien à copier : cliquez d'abord sur Préparer.");
-  navigator.clipboard.writeText(previewEl.textContent).then(() => alert("Ligne CSV copiée. Collez-la dans data/articles.csv sur GitHub."));
-});
-
-function escapeCsv(val) {
-  const needsQuotes = /[",\n]/.test(val);
-  const v = val.replace(/"/g,'""');
-  return needsQuotes ? `"${v}"` : v;
+function updateBatchPreview(){
+  const lines = [headers.join(",")].concat(batch.map(r => headers.map(h => (r[h]||"").replaceAll('"','""')).map(v => /[",\n]/.test(v)?`"${v}"`:v).join(",")));
+  batchPreview.textContent = lines.join("\n");
+  batchCount.textContent = `${batch.length} en attente`;
 }
+
+document.getElementById('download-batch').addEventListener('click', ()=>{
+  if (!batch.length) return alert("Aucun enregistrement dans le lot.");
+  const blob = new Blob([batchPreview.textContent], { type:"text/csv;charset=utf-8" });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = "nouveaux_articles.csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+document.getElementById('copy-batch').addEventListener('click', async()=>{
+  if (!batch.length) return alert("Aucun enregistrement dans le lot.");
+  await navigator.clipboard.writeText(batchPreview.textContent);
+  alert("Lot copié dans le presse-papiers.");
+});
+
+document.getElementById('reset-batch').addEventListener('click', ()=>{
+  batch.length = 0;
+  updateBatchPreview();
+});

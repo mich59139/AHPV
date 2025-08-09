@@ -4,59 +4,60 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Catalogue des articles</title>
-  <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="app-header">
+  <header class="toolbar">
     <h1>Catalogue des articles</h1>
     <div class="controls">
-      <input id="search" type="search" placeholder="Rechercher titre, auteur, thème…" />
-      <select id="limit">
-        <option value="50">50</option>
-        <option value="100">100</option>
-        <option value="all" selected>Tous</option>
-      </select>
-      <button id="addBtn" class="btn primary">＋ Ajouter un article</button>
+      <input id="search" type="text" placeholder="Rechercher titre, auteur, thème..." />
+      <label class="limit">
+        <select id="limit">
+          <option value="all">Tous</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+      </label>
+      <button id="toggle-form">➕ Ajouter un article</button>
     </div>
+    <div id="count" class="count"></div>
   </header>
 
-  <main class="container">
-    <div id="table-container"></div>
-    <div id="pagination" class="pagination"></div>
-  </main>
+  <section id="form-container" class="drawer hidden">
+    <div class="drawer-inner">
+      <div class="drawer-header">
+        <strong>Nouvel article</strong>
+        <button id="close-form" title="Fermer">✕</button>
+      </div>
+      <form id="form-article" class="form-grid">
+        <input name="Année" placeholder="Année" required />
+        <input name="Numéro" placeholder="Numéro" required />
+        <input name="Titre" placeholder="Titre" required />
+        <input name="Page(s)" placeholder="Page(s)" />
+        <input name="Auteur(s)" placeholder="Auteur(s)" list="dl-auteurs" />
+        <input name="Ville(s)" placeholder="Ville(s)" list="dl-villes" />
+        <input name="Theme(s)" placeholder="Thème(s)" list="dl-themes" />
+        <input name="Epoque" placeholder="Période (Epoque)" list="dl-epoques" />
+        <button type="submit">Ajouter au lot</button>
+      </form>
+      <datalist id="dl-auteurs"></datalist>
+      <datalist id="dl-villes"></datalist>
+      <datalist id="dl-themes"></datalist>
+      <datalist id="dl-epoques"></datalist>
 
-  <!-- Drawer -->
-  <aside id="drawer" class="drawer">
-    <div class="drawer-header">
-      <h2 id="drawerTitle">Nouvel article</h2>
-      <button id="closeDrawer" class="btn ghost">✕</button>
+      <div class="batch-actions">
+        <button id="download-batch">Télécharger le lot (.csv)</button>
+        <button id="copy-batch">Copier le lot</button>
+        <button id="reset-batch">Vider le lot</button>
+        <span id="batch-count">0 en attente</span>
+      </div>
+      <pre id="batch-preview"></pre>
     </div>
-    <form id="articleForm" class="form">
-      <div class="grid">
-        <label>Année<input name="Année" required list="anneesList"/></label>
-        <label>Numéro<input name="Numéro" required list="numerosList"/></label>
-        <label>Titre<input name="Titre" required /></label>
-        <label>Page(s)<input name="Page(s)" /></label>
-        <label>Auteur(s)<input name="Auteur(s)" list="auteursList"/></label>
-        <label>Ville(s)<input name="Ville(s)" list="villesList"/></label>
-        <label>Theme(s)<input name="Theme(s)" list="themesList"/></label>
-        <label>Epoque<input name="Epoque" list="epoquesList"/></label>
-      </div>
-      <div class="form-actions">
-        <button type="submit" class="btn primary">Préparer</button>
-        <button type="button" id="copyBtn" class="btn">Copier CSV</button>
-      </div>
-      <pre id="preview" class="preview"></pre>
-    </form>
-    <datalist id="anneesList"></datalist>
-    <datalist id="numerosList"></datalist>
-    <datalist id="auteursList"></datalist>
-    <datalist id="villesList"></datalist>
-    <datalist id="themesList"></datalist>
-    <datalist id="epoquesList"></datalist>
-  </aside>
+  </section>
 
-  <script src="app.js" defer></script>
+  <main id="articles"></main>
+
+  <script src="app.js"></script>
 </body>
 </html>
