@@ -8,19 +8,28 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body>
-  <header class="app-header">
-    <h1>Catalogue des articles</h1>
-    <div class="controls">
-      <input id="search" type="search" placeholder="Rechercher titre, auteur, thème…" />
-      <select id="limit">
-        <option value="50">50</option>
-        <option value="100">100</option>
-        <option value="all" selected>Tous</option>
-      </select>
-      <button id="addBtn" class="btn primary">＋ Ajouter un article</button>
-    </div>
-  </header>
+ let html = `<table><thead><tr>
+  <th>Année</th>
+  <th>Numéro</th>
+  <th>Titre</th>
+  <th>Auteur(s)</th>
+  <th>Thème(s)</th>
+  <th>Période</th>
+</tr></thead><tbody>`;
 
+html += filtered.map(row => `
+  <tr>
+    <td>${row["Année"] || ""}</td>
+    <td>${row["Numéro"] || ""}</td>
+    <td>${row["Titre"] || ""}</td>
+    <td>${row["Auteur(s)"] || ""}</td>
+    <td>${row["Theme(s)"] || ""}</td>
+    <td>${row["Epoque"] || ""}</td>
+  </tr>
+`).join('');
+
+html += "</tbody></table>";
+container.innerHTML = html;
   <main class="container">
     <div id="table-container"></div>
     <div id="pagination" class="pagination"></div>
