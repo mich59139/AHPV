@@ -2,31 +2,66 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Catalogue des articles – AHPV</title>
+  <title>Catalogue des articles</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <script defer src="app.js"></script>
 </head>
 <body>
   <h1>Catalogue des articles</h1>
 
-  <div class="controls">
+  <div class="toolbar">
     <label>Année :
-      <select id="filter-annee">
-        <option value="">(toutes)</option>
-      </select>
+      <select id="filter-annee"><option value="">(toutes)</option></select>
     </label>
-
     <label>Numéro :
-      <select id="filter-numero">
-        <option value="">(tous)</option>
+      <select id="filter-numero"><option value="">(tous)</option></select>
+    </label>
+    <input type="text" id="search" placeholder="Rechercher…">
+    <label>Afficher :
+      <select id="limit">
+        <option value="50">50</option>
+        <option value="100">100</option>
+        <option value="all" selected>Tous</option>
       </select>
     </label>
-
-    <input type="text" id="search" placeholder="Rechercher…">
+    <button id="toggle-add" type="button">➕ Ajouter un article</button>
   </div>
 
+  <div id="form-container" class="drawer hidden">
+    <div class="drawer-content">
+      <div class="drawer-header">
+        <h2>Nouvel article</h2>
+        <button id="close-drawer" type="button" title="Fermer">✖</button>
+      </div>
+      <form id="form-article" class="grid">
+        <input name="Année"  placeholder="Année" required />
+        <input name="Numéro" placeholder="Numéro" required />
+        <input name="Titre"  placeholder="Titre" required />
+        <input name="Page(s)" placeholder="Page(s)" />
+        <input name="Auteur(s)" placeholder="Auteur(s)" />
+        <input name="Ville(s)"  placeholder="Ville(s)" />
+        <input name="Theme(s)" placeholder="Thème(s)" />
+        <input name="Epoque"   placeholder="Période (Epoque)" />
+        <div class="actions">
+          <button type="submit">Ajouter au lot</button>
+          <button id="download-batch" type="button">Télécharger le lot (.csv)</button>
+          <button id="copy-batch" type="button">Copier le lot</button>
+          <button id="reset-batch" type="button">Vider le lot</button>
+          <span id="batch-count">0 en attente</span>
+        </div>
+      </form>
+      <pre id="batch-preview" class="preview"></pre>
+    </div>
+  </div>
+
+  <div id="count" class="count"></div>
   <div id="articles"></div>
+  <div id="pagination" class="pagination"></div>
+
+  <script>
+    const CSV_URL = "https://raw.githubusercontent.com/mich59139/AHPV/main/data/articles.csv?" + Date.now();
+  </script>
+  <script src="app.js" defer></script>
 </body>
 </html>
