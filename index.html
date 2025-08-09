@@ -1,70 +1,54 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
   <title>Catalogue des articles</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body>
- let html = `<table><thead><tr>
-  <th>Année</th>
-  <th>Numéro</th>
-  <th>Titre</th>
-  <th>Auteur(s)</th>
-  <th>Thème(s)</th>
-  <th>Période</th>
-</tr></thead><tbody>`;
+  <header class="toolbar">
+    <h1>Catalogue des articles</h1>
+    <div class="controls">
+      <input id="search" type="search" placeholder="Rechercher titre, auteur, thème…">
+      <label for="limit">Afficher</label>
+      <select id="limit">
+        <option value="50">50</option>
+        <option value="100">100</option>
+        <option value="all" selected>Tous</option>
+      </select>
+    </div>
+  </header>
 
-html += filtered.map(row => `
-  <tr>
-    <td>${row["Année"] || ""}</td>
-    <td>${row["Numéro"] || ""}</td>
-    <td>${row["Titre"] || ""}</td>
-    <td>${row["Auteur(s)"] || ""}</td>
-    <td>${row["Theme(s)"] || ""}</td>
-    <td>${row["Epoque"] || ""}</td>
-  </tr>
-`).join('');
-
-html += "</tbody></table>";
-container.innerHTML = html;
-  <main class="container">
-    <div id="table-container"></div>
-    <div id="pagination" class="pagination"></div>
+  <main>
+    <div id="table-view"></div>
+    <div id="pager"></div>
   </main>
 
-  <!-- Drawer -->
-  <aside id="drawer" class="drawer">
+  <aside class="drawer" id="drawer">
     <div class="drawer-header">
-      <h2 id="drawerTitle">Nouvel article</h2>
-      <button id="closeDrawer" class="btn ghost">✕</button>
+      <strong>Nouvel article</strong>
+      <button id="closeDrawer">✖</button>
     </div>
-    <form id="articleForm" class="form">
-      <div class="grid">
-        <label>Année<input name="Année" required list="anneesList"/></label>
-        <label>Numéro<input name="Numéro" required list="numerosList"/></label>
-        <label>Titre<input name="Titre" required /></label>
-        <label>Page(s)<input name="Page(s)" /></label>
-        <label>Auteur(s)<input name="Auteur(s)" list="auteursList"/></label>
-        <label>Ville(s)<input name="Ville(s)" list="villesList"/></label>
-        <label>Theme(s)<input name="Theme(s)" list="themesList"/></label>
-        <label>Epoque<input name="Epoque" list="epoquesList"/></label>
+    <form id="addForm" class="formgrid">
+      <input name="Année" placeholder="Année">
+      <input name="Numéro" placeholder="Numéro">
+      <input name="Titre" placeholder="Titre" required>
+      <input name="Page(s)" placeholder="Page(s)">
+      <input name="Auteur(s)" placeholder="Auteur(s)">
+      <input name="Ville(s)" placeholder="Ville(s)">
+      <input name="Theme(s)" placeholder="Thème(s)">
+      <input name="Epoque" placeholder="Époque">
+      <div class="actions">
+        <button type="submit">Préparer</button>
+        <button type="button" id="copyBtn">Copier CSV</button>
       </div>
-      <div class="form-actions">
-        <button type="submit" class="btn primary">Préparer</button>
-        <button type="button" id="copyBtn" class="btn">Copier CSV</button>
-      </div>
-      <pre id="preview" class="preview"></pre>
+      <pre id="preview"></pre>
     </form>
-    <datalist id="anneesList"></datalist>
-    <datalist id="numerosList"></datalist>
-    <datalist id="auteursList"></datalist>
-    <datalist id="villesList"></datalist>
-    <datalist id="themesList"></datalist>
-    <datalist id="epoquesList"></datalist>
   </aside>
+
+  <button id="openDrawer" class="fab">+ Ajouter un article</button>
 
   <script src="app.js" defer></script>
 </body>
