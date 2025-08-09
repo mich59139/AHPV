@@ -5,66 +5,67 @@
   <title>Catalogue des articles</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <script defer src="app.js"></script>
 </head>
 <body>
   <h1>Catalogue des articles</h1>
 
-  <div id="toolbar">
+  <div id="toolbar" class="toolbar">
     <label>Année :
-      <select id="filter-annee">
-        <option value="">(toutes)</option>
-      </select>
+      <select id="filter-annee"><option value="">(toutes)</option></select>
     </label>
-
     <label>Numéro :
-      <select id="filter-numero">
-        <option value="">(tous)</option>
-      </select>
+      <select id="filter-numero"><option value="">(tous)</option></select>
     </label>
-
-    <input type="text" id="search" placeholder="Rechercher titre, auteur, thème…">
-
     <label>Afficher :
       <select id="limit">
-        <option value="50" selected>50</option>
+        <option value="50">50</option>
         <option value="100">100</option>
-        <option value="all">Tous</option>
+        <option value="all" selected>Tous</option>
       </select>
     </label>
-
+    <input type="text" id="search" placeholder="Rechercher titre, auteur, thème…">
     <button id="export-view">⤓ Exporter la vue (.csv)</button>
     <button id="toggle-add">➕ Ajouter un article</button>
   </div>
 
-  <div id="count"></div>
-  <div id="articles"></div>
+  <div id="articles" class="table-wrap"></div>
 
   <!-- Drawer d'ajout -->
   <div id="form-container" class="drawer">
     <div class="drawer-content">
       <button id="close-drawer" title="Fermer">✖</button>
       <h2>Nouvel article</h2>
-      <form id="form-article">
-        <input name="Année"  placeholder="Année" required />
-        <input name="Numéro" placeholder="Numéro" required />
+      <form id="form-article" class="form-grid">
+        <input name="Année"  placeholder="Année" list="dl-annee" required />
+        <input name="Numéro" placeholder="Numéro" list="dl-numero" required />
         <input name="Titre"  placeholder="Titre" required />
         <input name="Page(s)" placeholder="Page(s)" />
-        <input name="Auteur(s)" placeholder="Auteur(s)" />
-        <input name="Ville(s)"  placeholder="Ville(s)" />
-        <input name="Theme(s)" placeholder="Thème(s)" />
-        <input name="Epoque"   placeholder="Période (Epoque)" />
+        <input name="Auteur(s)" placeholder="Auteur(s)" list="dl-auteurs" />
+        <input name="Ville(s)"  placeholder="Ville(s)" list="dl-villes" />
+        <input name="Theme(s)" placeholder="Thème(s)" list="dl-themes" />
+        <input name="Epoque"   placeholder="Période (Epoque)" list="dl-epoques" />
         <button type="submit">Ajouter au lot</button>
       </form>
-      <div class="batch-actions">
+
+      <!-- Datalists pour autocomplétion -->
+      <datalist id="dl-annee"></datalist>
+      <datalist id="dl-numero"></datalist>
+      <datalist id="dl-auteurs"></datalist>
+      <datalist id="dl-villes"></datalist>
+      <datalist id="dl-themes"></datalist>
+      <datalist id="dl-epoques"></datalist>
+
+      <div class="batch-bar">
         <button id="download-batch">Télécharger le lot (.csv)</button>
         <button id="copy-batch">Copier le lot</button>
         <button id="reset-batch">Vider le lot</button>
         <span id="batch-count">0 en attente</span>
       </div>
-      <pre id="batch-preview"></pre>
+      <pre id="batch-preview" class="batch-preview"></pre>
     </div>
   </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="app.js" defer></script>
 </body>
 </html>
