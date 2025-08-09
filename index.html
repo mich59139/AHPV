@@ -3,12 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <title>Catalogue des articles</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script defer src="app.js"></script>
 </head>
 <body>
   <h1>Catalogue des articles</h1>
 
-  <div id="toolbar" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:10px 0;">
+  <div id="toolbar">
     <label>Année :
       <select id="filter-annee">
         <option value="">(toutes)</option>
@@ -21,6 +24,8 @@
       </select>
     </label>
 
+    <input type="text" id="search" placeholder="Rechercher titre, auteur, thème…">
+
     <label>Afficher :
       <select id="limit">
         <option value="50" selected>50</option>
@@ -29,12 +34,14 @@
       </select>
     </label>
 
-    <input type="text" id="search" placeholder="Rechercher…">
-
+    <button id="export-view">⤓ Exporter la vue (.csv)</button>
     <button id="toggle-add">➕ Ajouter un article</button>
   </div>
 
-  <!-- Drawer d’ajout -->
+  <div id="count"></div>
+  <div id="articles"></div>
+
+  <!-- Drawer d'ajout -->
   <div id="form-container" class="drawer">
     <div class="drawer-content">
       <button id="close-drawer" title="Fermer">✖</button>
@@ -50,20 +57,14 @@
         <input name="Epoque"   placeholder="Période (Epoque)" />
         <button type="submit">Ajouter au lot</button>
       </form>
-
-      <div style="margin:8px 0;">
+      <div class="batch-actions">
         <button id="download-batch">Télécharger le lot (.csv)</button>
         <button id="copy-batch">Copier le lot</button>
         <button id="reset-batch">Vider le lot</button>
-        <span id="batch-count" style="margin-left:8px;opacity:.7;">0 en attente</span>
+        <span id="batch-count">0 en attente</span>
       </div>
-      <pre id="batch-preview" style="white-space:pre-wrap;"></pre>
+      <pre id="batch-preview"></pre>
     </div>
   </div>
-
-  <div id="articles"></div>
-
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <script src="app.js" defer></script>
 </body>
 </html>

@@ -1,11 +1,16 @@
-body { font-family: Arial, sans-serif; margin: 20px; max-width: 1100px; }
-input, select, button { margin: 4px; padding: 6px 10px; font-size: 14px; }
-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; }
-th { cursor: pointer; user-select: none; }
-th .arrow { opacity: .6; margin-left: 4px; }
-.drawer { position: fixed; top: 0; right: -420px; width: 420px; height: 100%; background: #fff; border-left: 1px solid #ddd;
-  box-shadow: -4px 0 10px rgba(0,0,0,.08); transition: right .25s ease-in-out; z-index: 1000; overflow-y: auto; }
-.drawer.open { right: 0; }
-.drawer-content { padding: 16px; }
-#close-drawer { float: right; }
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:20px}
+#toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0}
+input,select,button{padding:8px 10px;border:1px solid #ddd;border-radius:6px}
+button{background:#f3f4f6;cursor:pointer}
+button:hover{background:#e5e7eb}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{border:1px solid #e5e7eb;padding:8px 10px;text-align:left}
+th{cursor:pointer;user-select:none;background:#f9fafb}
+th .arrow{opacity:.6;margin-left:4px}
+#count{margin:8px 0;color:#374151}
+.drawer{position:fixed;top:0;right:-420px;width:420px;height:100%;background:#fff;border-left:1px solid #ddd;box-shadow:-4px 0 10px rgba(0,0,0,.08);transition:right .25s ease;z-index:1000;overflow-y:auto}
+.drawer.open{right:0}
+.drawer-content{padding:16px}
+#close-drawer{float:right}
+.batch-actions{display:flex;gap:8px;align-items:center;margin:8px 0}
+#batch-preview{white-space:pre-wrap}
