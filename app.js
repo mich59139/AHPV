@@ -629,9 +629,3 @@ async function init(){
   showLoading(false);
 }
 document.addEventListener("DOMContentLoaded", init);
-// Au lieu de: document.addEventListener("DOMContentLoaded", init);
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", init);
-} else {
-  init();
-}
