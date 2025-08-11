@@ -1,34 +1,30 @@
-// AHPV — Catalogue (multi-bases) : affichage, filtres, tri, exports, ajout, édition in-line,
-// normalisation auteurs/villes via listes séparées, détection de doublons, enregistrement GitHub.
-// Corrigé pour CSV avec séparateur "," ou ";" et fallbacks de chargement (raw → relatif → API).
-
-/* ========= Config ========= */
-const GITHUB_USER   = "mich59139";   // ← ton user/org
-const GITHUB_REPO   = "AHPV";        // ← nom du dépôt
+// AHPV — Catalogue + mini-éditeur des listes + exports "Tout"
+/* Config (adapter si besoin) */
+const GITHUB_USER   = "mich59139";
+const GITHUB_REPO   = "AHPV";
 const GITHUB_BRANCH = "main";
-
-// Fichiers de données
 const CSV_PATH      = "data/articles.csv";
 const AUTHORS_PATH  = "data/auteurs.csv";
 const CITIES_PATH   = "data/villes.csv";
 const THEMES_PATH   = "data/themes.csv";
 
-// URLs lecture
+/* URLs */
 const RAW_ART = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${CSV_PATH}`;
 const RAW_AUT = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${AUTHORS_PATH}`;
 const RAW_VIL = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${CITIES_PATH}`;
 const RAW_THE = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${THEMES_PATH}`;
-
-// URL écriture (API GitHub) — pour enregistrer articles.csv
 const API_ART = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${CSV_PATH}`;
+const API_AUT = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${AUTHORS_PATH}`;
+const API_VIL = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${CITIES_PATH}`;
+const API_THE = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${THEMES_PATH}`;
 
-/* ========= Utils ========= */
+/* Utils */
 const debounce = (fn, ms=180) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); } };
-const deburr  = s => (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[.\u00B7·]/g," ").replace(/\s+/g," ").trim();
-const splitMulti = s => (s||"").split(/;|,|\/|&| et |•|\u00B7/gi).map(x=>x.trim()).filter(Boolean);
+const deburr  = s => (s||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().replace(/[.\\u00B7·]/g," ").replace(/\\s+/g," ").trim();
+const splitMulti = s => (s||"").split(/;|,|\\/|&| et |•|\\u00B7/gi).map(x=>x.trim()).filter(Boolean);
 const uniqSorted = arr => Array.from(new Set(arr)).sort((a,b)=>(""+a).localeCompare(""+b,"fr",{numeric:true}));
 
-/* ========= State ========= */
+/* State */
 let ARTICLES = [];
 let FILTER_YEAR = "", FILTER_NUM = "", QUERY = "";
 let sortCol = null, sortDir = "asc";
@@ -36,27 +32,24 @@ let currentPage = 1, pageSize = 50;
 let editingIndex = -1;
 let GHTOKEN = localStorage.getItem("ghtoken") || "";
 let LISTS = { auteurs: [], villes: [], themes: [] };
-let CANON = { auteurs:new Map(), villes:new Map() }; // thèmes: juste une liste libre
+let CANON = { auteurs:new Map(), villes:new Map() };
 
-/* ========= CSV parsing (auto , / ;) ========= */
+/* CSV parsing */
 function parseCSV(text){
-  text = (text||"").replace(/^\uFEFF/, "");              // strip BOM
-  const firstLine = text.split(/\r?\n/, 1)[0] || "";
-  // Heuristique simple : si la première ligne contient un ';' et pas de ',', on prend ';'
+  text = (text||"").replace(/^\\uFEFF/, "");
+  const firstLine = text.split(/\\r?\\n/, 1)[0] || "";
   const delim = (firstLine.includes(";") && !firstLine.includes(",")) ? ";" : ",";
-  const lines = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
+  const lines = text.replace(/\\r\\n/g,"\\n").replace(/\\r/g,"\\n").split("\\n");
   if (!lines.length) return [];
   const header = splitCSVLine(lines.shift(), delim);
   const out = [];
   for (const ln of lines){
     if (!ln.trim()) continue;
     const row = splitCSVLine(ln, delim);
-    const o = {};
-    header.forEach((h,i)=>o[h]=row[i]??"");
+    const o = {}; header.forEach((h,i)=>o[h]=row[i]??"");
     out.push(o);
   }
   return out;
-
   function splitCSVLine(ln, d){
     const row=[]; let cur=""; let q=false;
     for (let i=0;i<ln.length;i++){
@@ -76,8 +69,8 @@ function parseCSV(text){
   }
 }
 function parseOneColCSV(text){
-  text = (text||"").replace(/^\uFEFF/,"");
-  const lines = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n").map(x=>x.trim()).filter(Boolean);
+  text = (text||"").replace(/^\\uFEFF/,"");
+  const lines = text.replace(/\\r\\n/g,"\\n").replace(/\\r/g,"\\n").split("\\n").map(x=>x.trim()).filter(Boolean);
   if (!lines.length) return [];
   const head = (lines[0]||"").toLowerCase();
   const content = (/auteur|ville|th[eè]me/.test(head)) ? lines.slice(1) : lines;
@@ -85,90 +78,90 @@ function parseOneColCSV(text){
 }
 function toCSV(rows){
   const COLS = ["Année","Numéro","Titre","Page(s)","Auteur(s)","Ville(s)","Theme(s)","Epoque"];
-  const esc = s => { s=(s==null?"":(""+s)).replaceAll('"','""'); return /[",\n]/.test(s) ? `"${s}"` : s; };
+  const esc = s => { s=(s==null?"":(""+s)).replaceAll('"','""'); return /[",\\n]/.test(s) ? `"${s}"` : s; };
   const head = COLS.join(",");
-  const body = rows.map(r => COLS.map(h => esc(r[h])).join(",")).join("\n");
-  return head + "\n" + body + "\n";
+  const body = rows.map(r => COLS.map(h => esc(r[h])).join(",")).join("\\n");
+  return head + "\\n" + body + "\\n";
 }
 function toTSV(rows){
   const COLS = ["Année","Numéro","Titre","Page(s)","Auteur(s)","Ville(s)","Theme(s)","Epoque"];
-  const head = COLS.join("\t");
-  const body = rows.map(r => COLS.map(h => r[h]??"").join("\t")).join("\n");
-  return head + "\n" + body + "\n";
+  const head = COLS.join("\\t");
+  const body = rows.map(r => COLS.map(h => r[h]??"").join("\\t")).join("\\n");
+  return head + "\\n" + body + "\\n";
 }
+function listToCSV(items, header){ const lines=[header, ...items]; return lines.join("\\n")+"\\n"; }
 
-/* ========= Fetch helpers (avec fallbacks) ========= */
+/* Fetch */
 async function fetchText(url){
   const r = await fetch(url, { cache:"no-store" });
   if (!r.ok) throw new Error("fetch " + url + " -> " + r.status);
   return r.text();
 }
 async function fetchCSVArticles(){
-  const API_CONTENT = API_ART; // base64
-  const tries = [
-    RAW_ART,                   // 1) raw.githubusercontent…
-    CSV_PATH,                  // 2) relatif (GitHub Pages)
-    API_CONTENT + "#api"       // 3) API contents (base64)
-  ];
+  const tries = [ RAW_ART, CSV_PATH, API_ART + "#api" ];
   for (const u of tries){
     try{
       if (u.endsWith("#api")){
-        const res = await fetch(API_CONTENT, { cache:"no-store" });
+        const res = await fetch(API_ART, { cache:"no-store" });
         if (!res.ok) throw new Error("api " + res.status);
         const j = await res.json();
-        const content = atob((j.content||"").replace(/\n/g,""));
+        const content = atob((j.content||"").replace(/\\n/g,""));
         return parseCSV(content);
       } else {
         const t = await fetchText(u);
         return parseCSV(t);
       }
-    }catch(e){
-      console.warn("Loader fallback raté:", u, e);
-    }
+    }catch(e){}
   }
   return [];
 }
 async function fetchCSVList(rawUrl, relPath){
-  const API_CONTENT = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${relPath}`;
-  const tries = [ rawUrl, relPath, API_CONTENT + "#api" ];
+  const API = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${relPath}`;
+  const tries = [ rawUrl, relPath, API + "#api" ];
   for (const u of tries){
     try{
       if (u.endsWith("#api")){
-        const res = await fetch(API_CONTENT, { cache:"no-store" });
+        const res = await fetch(API, { cache:"no-store" });
         if (!res.ok) throw new Error("api " + res.status);
         const j = await res.json();
-        const content = atob((j.content||"").replace(/\n/g,""));
+        const content = atob((j.content||"").replace(/\\n/g,""));
         return parseOneColCSV(content);
       } else {
         const t = await fetchText(u);
         return parseOneColCSV(t);
       }
-    }catch(e){ /* ignore */ }
+    }catch(e){}
   }
   return [];
 }
 
-/* ========= GitHub save (articles.csv) ========= */
-async function getContentSha(){
-  const res = await fetch(API_ART, { headers: { Authorization: `token ${GHTOKEN}` }});
-  if (!res.ok) throw new Error("Impossible de récupérer le SHA (auth?)");
-  const json = await res.json();
-  return json.sha;
+/* GitHub save */
+async function getShaFor(apiUrl){
+  const r = await fetch(apiUrl, { headers:{ Authorization:`token ${GHTOKEN}` }});
+  if (!r.ok) throw new Error("SHA introuvable " + apiUrl);
+  const j = await r.json(); return j.sha;
 }
 async function saveToGitHubMerged(newRows, message="Mise à jour catalogue"){
   if (!GHTOKEN){ alert("Modifié localement. Cliquez 🔐 pour enregistrer ensuite."); return; }
-  const sha = await getContentSha();
+  let sha; try{ sha = await getShaFor(API_ART); }catch{ sha = null; }
   const content = btoa(unescape(encodeURIComponent(toCSV(newRows))));
-  const body = { message, content, sha, branch: GITHUB_BRANCH, committer: { name: "AHPV Bot", email: "noreply@example.com" } };
-  const res = await fetch(API_ART, {
-    method:"PUT",
-    headers:{ "Content-Type":"application/json", Authorization:`token ${GHTOKEN}` },
-    body: JSON.stringify(body)
-  });
+  const body = { message, content, branch: GITHUB_BRANCH };
+  if (sha) body.sha = sha;
+  const res = await fetch(API_ART, { method:"PUT", headers:{ "Content-Type":"application/json", Authorization:`token ${GHTOKEN}` }, body: JSON.stringify(body) });
   if (!res.ok){ throw new Error("Échec commit"); }
 }
+async function saveListToGitHub(apiUrl, pathLabel, items, header){
+  if (!GHTOKEN){ alert("Modifié localement. Cliquez 🔐 pour enregistrer ensuite."); return false; }
+  let sha; try{ sha = await getShaFor(apiUrl); }catch{ sha=null; }
+  const content = btoa(unescape(encodeURIComponent(listToCSV(items, header))));
+  const body = { message:`Mise à jour ${pathLabel}`, content, branch:GITHUB_BRANCH };
+  if (sha) body.sha = sha;
+  const r = await fetch(apiUrl, { method:"PUT", headers:{ "Content-Type":"application/json", Authorization:`token ${GHTOKEN}` }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error("Échec commit " + pathLabel);
+  return true;
+}
 
-/* ========= Normalisation & suggestions ========= */
+/* Canon/suggestions */
 function buildCanonFromLists(){
   CANON.auteurs = new Map(LISTS.auteurs.map(x=>[deburr(x), x]));
   CANON.villes  = new Map(LISTS.villes.map(x=>[deburr(x), x]));
@@ -202,12 +195,10 @@ function populateDatalists(){
   const dlA = document.getElementById("dl-auteurs");
   const dlV = document.getElementById("dl-villes");
   const dlT = document.getElementById("dl-themes");
-  if (dlA) dlA.innerHTML = (LISTS.auteurs.length?LISTS.auteurs:Array.from(CANON.auteurs.values()))
-                          .slice(0,2000).map(x=>`<option value="${x}">`).join("");
-  if (dlV) dlV.innerHTML = (LISTS.villes.length?LISTS.villes:Array.from(CANON.villes.values()))
-                          .slice(0,2000).map(x=>`<option value="${x}">`).join("");
-  if (dlT) dlT.innerHTML = (LISTS.themes.length?LISTS.themes:Array.from(new Set((ARTICLES||[]).flatMap(r=>splitMulti(r["Theme(s)"])))) )
-                          .slice(0,2000).map(x=>`<option value="${x}">`).join("");
+  if (dlA) dlA.innerHTML = (LISTS.auteurs.length?LISTS.auteurs:Array.from(CANON.auteurs.values())).slice(0,2000).map(x=>`<option value="${x}">`).join("");
+  if (dlV) dlV.innerHTML = (LISTS.villes.length?LISTS.villes:Array.from(CANON.villes.values())).slice(0,2000).map(x=>`<option value="${x}">`).join("");
+  if (dlT) dlT.innerHTML = (LISTS.themes.length?LISTS.themes:Array.from(new Set((ARTICLES||[]).flatMap(r=>splitMulti(r["Theme(s)"]))))
+                          ).slice(0,2000).map(x=>`<option value="${x}">`).join("");
 }
 function normaliseMulti(s, kind){
   const map = (kind==="auteurs") ? CANON.auteurs : CANON.villes;
@@ -217,17 +208,14 @@ function normaliseMulti(s, kind){
   return out.join("; ");
 }
 function normaliseRowFields(row){
-  return {
-    ...row,
-    "Auteur(s)": normaliseMulti(row["Auteur(s)"], "auteurs"),
-    "Ville(s)":  normaliseMulti(row["Ville(s)"],  "villes"),
-  };
+  return { ...row, "Auteur(s)": normaliseMulti(row["Auteur(s)"], "auteurs"),
+                 "Ville(s)":  normaliseMulti(row["Ville(s)"],  "villes") };
 }
 
-/* ========= Détection de doublons (titre similaire) ========= */
+/* Doublons (simple) */
 function titleSimilarity(a,b){
-  const ta = deburr(a).split(/\s+/).filter(Boolean);
-  const tb = deburr(b).split(/\s+/).filter(Boolean);
+  const ta = deburr(a).split(/\\s+/).filter(Boolean);
+  const tb = deburr(b).split(/\\s+/).filter(Boolean);
   if (!ta.length || !tb.length) return 0;
   const setA=new Set(ta), setB=new Set(tb);
   let inter=0; for (const w of setA) if (setB.has(w)) inter++;
@@ -243,7 +231,7 @@ function findSimilarTitle(row, excludeIndex=-1){
     if (i===excludeIndex) return;
     let s = titleSimilarity(tNew, r["Titre"]||"");
     if (row["Année"] && r["Année"]===row["Année"]) s += 0.05;
-    if (row["Numéro"] && (""+r["Numéro"]).trim()===((""+row["Numéro"]).trim())) s += 0.05;
+    if (row["Numéro"] && (""+row["Numéro"]).trim()===((""+r["Numéro"]).trim())) s += 0.05;
     if (s>best.score) best={idx:i, score:s};
   });
   return best;
@@ -251,21 +239,21 @@ function findSimilarTitle(row, excludeIndex=-1){
 function checkDuplicateBeforeAdd(row){
   const best = findSimilarTitle(row, -1);
   if (best.score >= 0.85){
-    const msg = `Doublon probable (${Math.round(best.score*100)}%).\n`+
-                `Titre existant:\n- ${ARTICLES[best.idx]["Titre"]}\n\n`+
-                `Voulez-vous quand même créer un nouvel article ?\n`+
+    const msg = `Doublon probable (${Math.round(best.score*100)}%).\\n`+
+                `Titre existant:\\n- ${ARTICLES[best.idx]["Titre"]}\\n\\n`+
+                `Voulez-vous quand même créer un nouvel article ?\\n`+
                 `(OK = créer, Annuler = revenir au formulaire)`;
     return confirm(msg);
   }
   return true;
 }
 
-/* ========= Chargement & rendu ========= */
+/* UI */
 function showLoading(b){ document.getElementById("loading")?.classList.toggle("hidden", !b); }
 function applyFilters(){
   let rows = ARTICLES.slice();
   if (FILTER_YEAR) rows = rows.filter(r => (r["Année"]||"")===FILTER_YEAR);
-  if (FILTER_NUM)  rows = rows.filter(r => ((""+(r["Numéro"]||"")).trim()===(""+FILTER_NUM).trim()));
+  if (FILTER_NUM)  rows = rows.filter(r => ((""+(r["Numéro"]||"")).trim()===((""+FILTER_NUM).trim())));
   if (QUERY){ const q=QUERY.toLowerCase(); rows = rows.filter(r => Object.values(r).some(v => (v??"").toString().toLowerCase().includes(q))); }
   if (sortCol){
     const factor = sortDir==="desc" ? -1 : 1;
@@ -317,24 +305,21 @@ function render(){
     }
   }).join("");
 
-  // tri visuel
   document.querySelectorAll("th[data-col]").forEach(th=>{
     th.classList.remove("sort-asc","sort-desc");
     if (th.dataset.col === sortCol) th.classList.add(sortDir==="asc"?"sort-asc":"sort-desc");
   });
 
-  // pager
   const pages = Math.max(1, Math.ceil(total / pageSize));
   document.getElementById("pageinfo").textContent = `${Math.min(currentPage,pages)} / ${pages} — ${total} ligne(s)`;
   document.getElementById("prev").disabled = currentPage<=1;
   document.getElementById("next").disabled = currentPage>=pages;
 
-  // status
   const sc = document.getElementById("status-count"); if (sc) sc.textContent = `Fichier: ✅ (${ARTICLES.length})`;
   const sa = document.getElementById("status-auth");  if (sa) sa.textContent = GHTOKEN ? "🔐 Connecté" : "🔓 Invité";
 }
 
-/* ========= Inline edit ========= */
+/* Inline edit */
 let AUTO_SAVE_SILENT = false;
 window._editRow = (idx)=>{ try{ if (matchMedia("(max-width:800px)").matches) _inlineEdit(idx); } catch{ _inlineEdit(idx); } };
 window._inlineEdit = (idx)=>{
@@ -374,13 +359,8 @@ window._inlineSave = async ()=>{
   catch(e){ console.error(e); alert("Échec de l'enregistrement GitHub"); }
 };
 
-/* ========= Ajout / Suppression ========= */
-window._openAddModal = ()=>{
-  const d = document.getElementById("add-modal");
-  document.getElementById("add-form")?.reset();
-  d?.showModal();
-  document.getElementById("a-annee")?.focus();
-};
+/* Ajout / Suppression */
+window._openAddModal = ()=>{ const d=document.getElementById("add-modal"); document.getElementById("add-form")?.reset(); d?.showModal(); document.getElementById("a-annee")?.focus(); };
 document.getElementById("add-cancel")?.addEventListener("click", ()=> document.getElementById("add-modal")?.close());
 document.getElementById("add-form")?.addEventListener("submit", async (e)=>{
   e.preventDefault();
@@ -394,21 +374,14 @@ document.getElementById("add-form")?.addEventListener("submit", async (e)=>{
     "Theme(s)":  document.getElementById("a-themes").value.trim(),
     "Epoque":    document.getElementById("a-epoque").value.trim(),
   };
-  // normaliser champs auteurs/villes avant doublons
   const row = normaliseRowFields(rowRaw);
-
-  // doublon exact
   const dupExact = ARTICLES.find(r => (r["Année"]===row["Année"] && r["Numéro"]===row["Numéro"] && r["Titre"]===row["Titre"]));
   if (dupExact){ alert("Doublon exact (Année + Numéro + Titre)"); return; }
-
-  // doublon intelligent
   if (!checkDuplicateBeforeAdd(row)) return;
-
   ARTICLES.push(row);
   document.getElementById("add-modal")?.close();
   currentPage = Math.ceil(ARTICLES.length / pageSize);
   render();
-
   if (!GHTOKEN){ alert("Ajout local. Cliquez 🔐 pour enregistrer ensuite."); return; }
   try{ await saveToGitHubMerged(ARTICLES, "Ajout d'article"); }
   catch(e){ console.error(e); alert("Échec du commit GitHub"); }
@@ -421,7 +394,7 @@ window._deleteRow = async (idx)=>{
   try{ await saveToGitHubMerged(ARTICLES, "Suppression"); }catch(e){ console.error(e); alert("Échec commit"); }
 };
 
-/* ========= Filtres / tri / pagination ========= */
+/* Filtres / tri / pagination */
 function refreshNumeroOptions(){
   const selYear=document.getElementById("filter-annee");
   const selNum=document.getElementById("filter-numero");
@@ -474,7 +447,7 @@ function bindPager(){
   document.getElementById("next")?.addEventListener("click", ()=>{ currentPage++; render(); });
 }
 
-/* ========= Exports ========= */
+/* Exports */
 async function ensureXLSX(){ if (window.XLSX) return; await new Promise((res,rej)=>{ const s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
 function download(name, text, mime="text/csv;charset=utf-8"){
   const blob = new Blob([text], {type: mime});
@@ -503,7 +476,6 @@ function bindExports(){
     XLSX.writeFile(wb, "articles_filtrés.xlsx");
   });
   document.getElementById("export-print")?.addEventListener("click", ()=> window.print());
-
   document.getElementById("export-csv-all")?.addEventListener("click", ()=>{
     download("articles_tout.csv", toCSV(getAllRows()));
   });
@@ -518,7 +490,7 @@ function bindExports(){
   });
 }
 
-/* ========= Aide & Auth ========= */
+/* Aide & Auth */
 function bindHelp(){
   const d = document.getElementById("help-modal");
   document.getElementById("help-btn")?.addEventListener("click", ()=> d.showModal());
@@ -540,27 +512,119 @@ function bindAuth(){
   document.getElementById("logout-btn")?.addEventListener("click", githubLogout);
 }
 
-/* ========= Init ========= */
+/* List editor */
+function bindListsEditor(){
+  const btn = document.getElementById("lists-btn");
+  const dlg = document.getElementById("lists-modal");
+  if (!btn || !dlg) return;
+
+  const tabs = dlg.querySelectorAll(".tab");
+  const itemsUL = dlg.querySelector("#list-items");
+  const input = dlg.querySelector("#list-input");
+  const addBtn = dlg.querySelector("#list-add");
+  const sortBtn = dlg.querySelector("#list-sort");
+  const dedupeBtn = dlg.querySelector("#list-dedupe");
+  const importBtn = dlg.querySelector("#list-import");
+  const fileInp = dlg.querySelector("#list-file");
+  const exportBtn = dlg.querySelector("#list-export");
+  const saveBtn = dlg.querySelector("#list-save");
+  const closeBtn = dlg.querySelector("#list-close");
+  const countSpan = dlg.querySelector("#list-count");
+
+  let KIND = "auteurs";
+  let WORK = [];
+
+  const headerOf = k => (k==="auteurs" ? "Auteur" : k==="villes" ? "Ville" : "Theme");
+  const apiOf    = k => (k==="auteurs" ? API_AUT : k==="villes" ? API_VIL : API_THE);
+
+  function escapeHTML(s){ return (s??"").toString().replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m])); }
+  function refresh(){
+    countSpan.textContent = `${WORK.length} élément(s)`;
+    itemsUL.innerHTML = WORK.map((val, idx)=>`
+      <li>
+        <span>${escapeHTML(val)}</span>
+        <div><button class="del" data-i="${idx}" aria-label="Supprimer">✖</button></div>
+      </li>`).join("");
+  }
+  function setKind(k){
+    KIND = k;
+    tabs.forEach(t=>t.classList.toggle("active", t.dataset.kind===KIND));
+    WORK = Array.from(LISTS[KIND] || []);
+    refresh();
+  }
+
+  btn.addEventListener("click", ()=>{ setKind("auteurs"); dlg.showModal(); input.focus(); });
+  closeBtn.addEventListener("click", ()=> dlg.close());
+  tabs.forEach(t => t.addEventListener("click", ()=> setKind(t.dataset.kind)));
+
+  addBtn.addEventListener("click", ()=>{
+    const v = (input.value||"").trim();
+    if (!v) return;
+    if (!WORK.some(x => x.toLowerCase()===v.toLowerCase())) WORK.push(v);
+    input.value = ""; refresh();
+  });
+  input.addEventListener("keydown", (e)=>{ if (e.key==="Enter"){ e.preventDefault(); addBtn.click(); } });
+
+  itemsUL.addEventListener("click", (e)=>{
+    const del = e.target.closest(".del"); if (!del) return;
+    const i = +del.dataset.i; WORK.splice(i,1); refresh();
+  });
+
+  sortBtn.addEventListener("click", ()=>{ WORK.sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"})); refresh(); });
+  dedupeBtn.addEventListener("click", ()=>{
+    const seen=new Set(); const out=[];
+    for (const v of WORK){ const k=v.toLowerCase(); if (!seen.has(k)){ seen.add(k); out.push(v); } }
+    WORK = out; refresh();
+  });
+
+  importBtn.addEventListener("click", ()=> fileInp.click());
+  fileInp.addEventListener("change", async ()=>{
+    const f = fileInp.files?.[0]; if (!f) return;
+    const txt = await f.text();
+    const list = parseOneColCSV(txt);
+    WORK = Array.from(new Set([...WORK, ...list])).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
+    fileInp.value = ""; refresh();
+  });
+
+  exportBtn.addEventListener("click", ()=>{
+    const csv = listToCSV(WORK, headerOf(KIND));
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${KIND}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  saveBtn.addEventListener("click", async ()=>{
+    LISTS[KIND] = Array.from(WORK);
+    buildCanonFromLists();   // refresh canonical forms
+    populateDatalists();     // refresh suggestions
+    try{
+      const ok = await saveListToGitHub(apiOf(KIND), `data/${KIND}.csv`, WORK, headerOf(KIND));
+      if (ok) alert("Liste enregistrée sur GitHub ✅");
+    }catch(e){ console.error(e); alert("Échec d'enregistrement GitHub"); }
+  });
+}
+
+/* Init */
 async function init(){
   showLoading(true);
   try{
-    // 1) charge articles
     ARTICLES = await fetchCSVArticles();
   }catch(e){ console.error(e); ARTICLES = []; }
-  // 2) charge listes (si présentes), sinon reconstruit depuis ARTICLES
   try{ LISTS.auteurs = await fetchCSVList(RAW_AUT, AUTHORS_PATH); }catch{ LISTS.auteurs = []; }
   try{ LISTS.villes  = await fetchCSVList(RAW_VIL, CITIES_PATH); }catch{ LISTS.villes  = []; }
   try{ LISTS.themes  = await fetchCSVList(RAW_THE, THEMES_PATH); }catch{ LISTS.themes  = []; }
   if (LISTS.auteurs.length || LISTS.villes.length) buildCanonFromLists(); else buildCanonFromArticles();
   populateDatalists();
 
-  // alimente Années/Numéros
   const years = uniqSorted(ARTICLES.map(r=>r["Année"]).filter(Boolean));
   const fy = document.getElementById("filter-annee");
   if (fy) fy.innerHTML = '<option value="">(toutes)</option>'+ years.map(y=>`<option value="${y}">${y}</option>`).join("");
   refreshNumeroOptions();
 
-  bindFilters(); bindSorting(); bindPager(); bindExports(); bindHelp(); bindAuth();
+  bindFilters(); bindSorting(); bindPager(); bindExports(); bindHelp(); bindAuth(); bindListsEditor();
   render();
   showLoading(false);
 }

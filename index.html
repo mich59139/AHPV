@@ -1,27 +1,161 @@
 <!DOCTYPE html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AHPV – Catalogue des Articles</title>
-<link rel="icon" href="assets/favicon.png" type="image/png">
-<link rel="stylesheet" href="style.css"></head>
-<body class="theme-sand"><div class="shell">
-<div class="brand"><a href="https://www.amisdelhistoiredupaysvizillois.fr/" target="_blank" rel="noopener"><img src="assets/logo-ahpv.png" class="brand-logo" alt=""></a>
-<div class="brand-text"><div class="brand-name">Amis de l’Histoire du Pays Vizillois</div><h1 class="brand-sub">Catalogue des Articles</h1></div></div>
-<div class="filters panel"><label>Année <select id="filter-annee"><option value="">(toutes)</option></select></label>
-<label>Numéro <select id="filter-numero"><option value="">(tous)</option></select></label>
-<label>Recherche <input id="search" type="text" placeholder="titre, auteur, ville, thème…"></label>
-<button onclick="resetAllFilters()">↺ Réinitialiser</button></div>
-<div class="controls panel"><button onclick="window._openAddModal?.()">➕ Ajouter un article</button></div>
-<div class="exports panel"><button id="export-copy">📋 Copier</button><button id="export-csv">⬇️ CSV</button><button id="export-xlsx">⬇️ Excel</button><button id="export-print">🖨️ Imprimer</button><span class="sep"></span><button id="export-csv-all">⬇️ CSV (Tout)</button><button id="export-xlsx-all">⬇️ Excel (Tout)</button></div>
-<div class="table-wrap"><table class="responsive" aria-describedby="pageinfo"><thead><tr>
-<th role="button" tabindex="0" data-col="Année">Année</th><th role="button" tabindex="0" data-col="Numéro">Numéro</th><th role="button" tabindex="0" data-col="Titre">Titre</th><th role="button" tabindex="0" data-col="Page(s)">Page(s)</th><th role="button" tabindex="0" data-col="Auteur(s)">Auteur(s)</th><th role="button" tabindex="0" data-col="Ville(s)">Ville(s)</th><th role="button" tabindex="0" data-col="Theme(s)">Thème(s)</th><th role="button" tabindex="0" data-col="Epoque">Période</th><th>Actions</th>
-</tr></thead><tbody id="tbody"></tbody></table></div>
-<div class="pager panel"><button id="prev">◀</button><span id="pageinfo" aria-live="polite">—</span><button id="next">▶</button></div>
-<dialog id="add-modal" class="modal"><form method="dialog" id="add-form"><h3>Ajouter un article</h3>
-<div class="grid"><label>Année <input id="a-annee" required></label><label>Numéro <input id="a-numero" required></label><label>Titre <input id="a-titre" required></label><label>Page(s) <input id="a-pages"></label>
-<label>Auteur(s) <input id="a-auteurs" list="dl-auteurs"></label><label>Ville(s)  <input id="a-villes"  list="dl-villes"></label><label>Thème(s)  <input id="a-themes"  list="dl-themes"></label><label>Époque <input id="a-epoque"></label></div>
-<menu><button type="button" id="add-cancel">Annuler</button><button type="submit" id="add-submit">Ajouter</button></menu></form></dialog>
-<dialog id="help-modal" class="modal"><div class="help-panel"><h3>Aide</h3>
-<div class="help-body"><p>Suggestions : <code>data/auteurs.csv</code>, <code>data/villes.csv</code>, <code>data/themes.csv</code>. À défaut, reconstruites depuis <code>articles.csv</code>.</p></div>
-<menu><button id="help-close">Fermer</button></menu></div></dialog>
-<datalist id="dl-auteurs"></datalist><datalist id="dl-villes"></datalist><datalist id="dl-themes"></datalist>
-</div><script src="app.js"></script></body></html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AHPV – Catalogue des Articles</title>
+  <link rel="icon" href="assets/favicon.png" type="image/png">
+  <link rel="stylesheet" href="style.css?v=20250811150902">
+</head>
+<body class="theme-sand">
+  <div class="shell">
+    <div class="brand">
+      <a id="brand-link" href="https://www.amisdelhistoiredupaysvizillois.fr/" target="_blank" rel="noopener" class="brand-link">
+        <img src="assets/logo-ahpv.png" alt="Amis de l’Histoire du Pays Vizillois" class="brand-logo">
+      </a>
+      <div class="brand-text">
+        <div class="brand-name">Amis de l’Histoire du Pays Vizillois</div>
+        <h1 class="brand-sub">Catalogue des Articles</h1>
+      </div>
+    </div>
+
+    <div class="badges panel">
+      <span id="status-count">Fichier: —</span>
+      <span id="status-auth">🔓 Invité</span>
+      <button id="login-btn" class="has-tip" data-tip="Se connecter pour enregistrer sur GitHub">🔐 Connexion</button>
+      <button id="logout-btn" class="has-tip" data-tip="Déconnexion (supprime le token local)">🚪 Déconnexion</button>
+      <button id="help-btn" class="has-tip" data-tip="Ouvrir l’aide">❓ Aide</button>
+    </div>
+
+    <div class="filters panel">
+      <label>Année
+        <select id="filter-annee" aria-label="Filtrer par année">
+          <option value="">(toutes)</option>
+        </select>
+      </label>
+      <label>Numéro
+        <select id="filter-numero" aria-label="Filtrer par numéro">
+          <option value="">(tous)</option>
+        </select>
+      </label>
+      <label>Recherche
+        <input id="search" type="text" placeholder="titre, auteur, ville, thème…" aria-label="Recherche">
+      </label>
+      <button onclick="resetAllFilters()" class="has-tip" data-tip="Réinitialiser tous les filtres">↺ Réinitialiser</button>
+    </div>
+
+    <div class="controls panel">
+      <button onclick="window._openAddModal?.()" class="has-tip" data-tip="Ajouter un nouvel article">➕ Ajouter un article</button>
+      <button id="lists-btn" class="has-tip" data-tip="Éditer les listes (Auteurs / Villes / Thèmes)">🧾 Listes</button>
+    </div>
+
+    <div class="exports panel">
+      <button id="export-copy"     class="has-tip" data-tip="Copier les lignes filtrées (TSV)">📋 Copier</button>
+      <button id="export-csv"      class="has-tip" data-tip="Télécharger CSV (filtré)">⬇️ CSV</button>
+      <button id="export-xlsx"     class="has-tip" data-tip="Télécharger Excel (filtré)">⬇️ Excel</button>
+      <button id="export-print"    class="has-tip" data-tip="Imprimer la liste (A4)">🖨️ Imprimer</button>
+      <span class="sep"></span>
+      <button id="export-csv-all"  class="has-tip" data-tip="CSV de TOUT le catalogue (ignore les filtres)">⬇️ CSV (Tout)</button>
+      <button id="export-xlsx-all" class="has-tip" data-tip="Excel de TOUT le catalogue (ignore les filtres)">⬇️ Excel (Tout)</button>
+    </div>
+
+    <div class="table-wrap">
+      <table class="responsive" aria-describedby="pageinfo">
+        <thead>
+          <tr>
+            <th role="button" tabindex="0" data-col="Année">Année</th>
+            <th role="button" tabindex="0" data-col="Numéro">Numéro</th>
+            <th role="button" tabindex="0" data-col="Titre">Titre</th>
+            <th role="button" tabindex="0" data-col="Page(s)">Page(s)</th>
+            <th role="button" tabindex="0" data-col="Auteur(s)">Auteur(s)</th>
+            <th role="button" tabindex="0" data-col="Ville(s)">Ville(s)</th>
+            <th role="button" tabindex="0" data-col="Theme(s)">Thème(s)</th>
+            <th role="button" tabindex="0" data-col="Epoque">Période</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="pager panel">
+      <button id="prev" class="has-tip" data-tip="Page précédente">◀</button>
+      <span id="pageinfo" aria-live="polite">—</span>
+      <button id="next" class="has-tip" data-tip="Page suivante">▶</button>
+    </div>
+
+    <div id="loading" class="loading hidden" role="status" aria-live="assertive">Chargement…</div>
+
+    <dialog id="add-modal" class="modal">
+      <form method="dialog" id="add-form">
+        <h3>Ajouter un article</h3>
+        <div class="grid">
+          <label>Année <input id="a-annee" required></label>
+          <label>Numéro <input id="a-numero" required></label>
+          <label>Titre <input id="a-titre" required></label>
+          <label>Page(s) <input id="a-pages"></label>
+          <label>Auteur(s) <input id="a-auteurs" list="dl-auteurs"></label>
+          <label>Ville(s)  <input id="a-villes"  list="dl-villes"></label>
+          <label>Thème(s)  <input id="a-themes"  list="dl-themes"></label>
+          <label>Époque <input id="a-epoque"></label>
+        </div>
+        <menu>
+          <button type="button" id="add-cancel">Annuler</button>
+          <button type="submit" id="add-submit">Ajouter</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="help-modal" class="modal">
+      <div class="help-panel">
+        <h3>Aide</h3>
+        <div class="help-body">
+          <h4>Listes séparées</h4>
+          <ul class="help-list">
+            <li>Suggestions depuis <code>data/auteurs.csv</code>, <code>data/villes.csv</code>, <code>data/themes.csv</code>. À défaut, reconstruites automatiquement.</li>
+          </ul>
+          <h4>Exports</h4>
+          <ul class="help-list">
+            <li>Filtré : Copier, CSV, Excel, Imprimer. — Tout : CSV/Excel (ignore les filtres).</li>
+          </ul>
+        </div>
+        <menu><button id="help-close">Fermer</button></menu>
+      </div>
+    </dialog>
+
+    <dialog id="lists-modal" class="modal">
+      <div class="lists">
+        <h3>Listes de référence</h3>
+        <nav class="tabs">
+          <button data-kind="auteurs" class="tab active">Auteurs</button>
+          <button data-kind="villes"  class="tab">Villes</button>
+          <button data-kind="themes"  class="tab">Thèmes</button>
+          <span id="list-count" class="count"></span>
+        </nav>
+        <div class="editor">
+          <div class="toolbar">
+            <input id="list-input" type="text" placeholder="Ajouter un élément…">
+            <button id="list-add">Ajouter</button>
+            <button id="list-sort">Trier A → Z</button>
+            <button id="list-dedupe">Dédupliquer</button>
+            <button id="list-import">Importer CSV</button>
+            <input id="list-file" type="file" accept=".csv,.txt" hidden>
+            <button id="list-export">Exporter CSV</button>
+          </div>
+          <ul id="list-items" class="items" aria-live="polite"></ul>
+        </div>
+        <menu>
+          <button id="list-save" class="primary">💾 Enregistrer</button>
+          <button id="list-close">Fermer</button>
+        </menu>
+      </div>
+    </dialog>
+
+    <datalist id="dl-auteurs"></datalist>
+    <datalist id="dl-villes"></datalist>
+    <datalist id="dl-themes"></datalist>
+  </div>
+
+  <script src="app.js?v=20250811150902"></script>
+</body>
+</html>
