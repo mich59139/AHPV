@@ -21,7 +21,18 @@ const API_THE = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/cont
 /* Utils */
 const debounce = (fn, ms=180) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); } };
 const deburr  = s => (s||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().replace(/[.\\u00B7·]/g," ").replace(/\\s+/g," ").trim();
-const splitMulti = s => (s||"").split(/;|,|\\/|&| et |•|\\u00B7/gi).map(x=>x.trim()).filter(Boolean);
+// remplace la ligne ci-dessus par ça (ultra-compatible Safari)
+function splitMulti(s) {
+  if (!s) return [];
+  let x = String(s);
+  // le mot "et" isolé
+  x = x.replace(/\bet\b/gi, ";");
+  // unifie tous les séparateurs en ;
+  [";", ",", "/", "&", "•", "·"].forEach(sep => {
+    x = x.split(sep).join(";");
+  });
+  return x.split(";").map(v => v.trim()).filter(Boolean);
+}
 const uniqSorted = arr => Array.from(new Set(arr)).sort((a,b)=>(""+a).localeCompare(""+b,"fr",{numeric:true}));
 
 /* State */
