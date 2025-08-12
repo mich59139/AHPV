@@ -5,26 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AHPV – Catalogue des Articles</title>
   <link rel="icon" href="assets/favicon.png" type="image/png">
-  <link rel="stylesheet" href="style.css?v=20250811150902">
+  <link rel="stylesheet" href="style.css">
 </head>
-<body class="theme-sand">
+<body>
   <div class="shell">
     <div class="brand">
-      <a id="brand-link" href="https://www.amisdelhistoiredupaysvizillois.fr/" target="_blank" rel="noopener" class="brand-link">
-        <img src="assets/logo-ahpv.png" alt="Amis de l’Histoire du Pays Vizillois" class="brand-logo">
+      <a id="brand-link" href="https://www.amisdelhistoiredupaysvizillois.fr/" target="_blank" rel="noopener">
+        <img src="assets/logo-ahpv.png" alt="AHPV" class="brand-logo">
       </a>
-      <div class="brand-text">
-        <div class="brand-name">Amis de l’Histoire du Pays Vizillois</div>
-        <h1 class="brand-sub">Catalogue des Articles</h1>
+      <div>
+        <div style="font-weight:700">Amis de l’Histoire du Pays Vizillois</div>
+        <h1 style="font-size:1.25rem;margin:2px 0 0">Catalogue des Articles</h1>
       </div>
     </div>
 
     <div class="badges panel">
       <span id="status-count">Fichier: —</span>
       <span id="status-auth">🔓 Invité</span>
-      <button id="login-btn" class="has-tip" data-tip="Se connecter pour enregistrer sur GitHub">🔐 Connexion</button>
-      <button id="logout-btn" class="has-tip" data-tip="Déconnexion (supprime le token local)">🚪 Déconnexion</button>
-      <button id="help-btn" class="has-tip" data-tip="Ouvrir l’aide">❓ Aide</button>
+      <button id="login-btn">🔐 Connexion</button>
+      <button id="logout-btn">🚪 Déconnexion</button>
+      <button id="help-btn">❓ Aide</button>
     </div>
 
     <div class="filters panel">
@@ -41,22 +41,22 @@
       <label>Recherche
         <input id="search" type="text" placeholder="titre, auteur, ville, thème…" aria-label="Recherche">
       </label>
-      <button onclick="resetAllFilters()" class="has-tip" data-tip="Réinitialiser tous les filtres">↺ Réinitialiser</button>
+      <button onclick="resetAllFilters()">↺ Réinitialiser</button>
     </div>
 
     <div class="controls panel">
-      <button onclick="window._openAddModal?.()" class="has-tip" data-tip="Ajouter un nouvel article">➕ Ajouter un article</button>
-      <button id="lists-btn" class="has-tip" data-tip="Éditer les listes (Auteurs / Villes / Thèmes)">🧾 Listes</button>
+      <button onclick="window._openAddModal?.()">➕ Ajouter un article</button>
+      <button id="lists-btn">🧾 Listes</button>
     </div>
 
     <div class="exports panel">
-      <button id="export-copy"     class="has-tip" data-tip="Copier les lignes filtrées (TSV)">📋 Copier</button>
-      <button id="export-csv"      class="has-tip" data-tip="Télécharger CSV (filtré)">⬇️ CSV</button>
-      <button id="export-xlsx"     class="has-tip" data-tip="Télécharger Excel (filtré)">⬇️ Excel</button>
-      <button id="export-print"    class="has-tip" data-tip="Imprimer la liste (A4)">🖨️ Imprimer</button>
+      <button id="export-copy">📋 Copier</button>
+      <button id="export-csv">⬇️ CSV</button>
+      <button id="export-xlsx">⬇️ Excel</button>
+      <button id="export-print">🖨️ Imprimer</button>
       <span class="sep"></span>
-      <button id="export-csv-all"  class="has-tip" data-tip="CSV de TOUT le catalogue (ignore les filtres)">⬇️ CSV (Tout)</button>
-      <button id="export-xlsx-all" class="has-tip" data-tip="Excel de TOUT le catalogue (ignore les filtres)">⬇️ Excel (Tout)</button>
+      <button id="export-csv-all">⬇️ CSV (Tout)</button>
+      <button id="export-xlsx-all">⬇️ Excel (Tout)</button>
     </div>
 
     <div class="table-wrap">
@@ -79,19 +79,27 @@
     </div>
 
     <div class="pager panel">
-      <button id="prev" class="has-tip" data-tip="Page précédente">◀</button>
+      <button id="prev">◀</button>
       <span id="pageinfo" aria-live="polite">—</span>
-      <button id="next" class="has-tip" data-tip="Page suivante">▶</button>
+      <button id="next">▶</button>
     </div>
 
     <div id="loading" class="loading hidden" role="status" aria-live="assertive">Chargement…</div>
 
+    <!-- Modal: Ajouter un article -->
     <dialog id="add-modal" class="modal">
       <form method="dialog" id="add-form">
         <h3>Ajouter un article</h3>
         <div class="grid">
           <label>Année <input id="a-annee" required></label>
-          <label>Numéro <input id="a-numero" required></label>
+          <label>Numéro
+            <select id="a-numero" required>
+              <option value="">(choisir)</option>
+              <!-- options injectées par app.js -->
+              <option value="__NEW__">— Nouveau numéro… —</option>
+            </select>
+            <input id="a-numero-new" class="hidden" placeholder="Saisir un nouveau numéro">
+          </label>
           <label>Titre <input id="a-titre" required></label>
           <label>Page(s) <input id="a-pages"></label>
           <label>Auteur(s) <input id="a-auteurs" list="dl-auteurs"></label>
@@ -106,16 +114,17 @@
       </form>
     </dialog>
 
+    <!-- Modal: Aide -->
     <dialog id="help-modal" class="modal">
       <div class="help-panel">
         <h3>Aide</h3>
         <div class="help-body">
           <h4>Listes séparées</h4>
-          <ul class="help-list">
+          <ul>
             <li>Suggestions depuis <code>data/auteurs.csv</code>, <code>data/villes.csv</code>, <code>data/themes.csv</code>. À défaut, reconstruites automatiquement.</li>
           </ul>
           <h4>Exports</h4>
-          <ul class="help-list">
+          <ul>
             <li>Filtré : Copier, CSV, Excel, Imprimer. — Tout : CSV/Excel (ignore les filtres).</li>
           </ul>
         </div>
@@ -156,6 +165,6 @@
     <datalist id="dl-themes"></datalist>
   </div>
 
-  <script src="app.js?v=20250811150902"></script>
+  <script src="app.js" defer></script>
 </body>
 </html>

@@ -1,4 +1,6 @@
-// AHPV — Catalogue + mini-éditeur des listes + exports "Tout" (Safari-safe)
+// AHPV — Catalogue + mini-éditeur des listes + exports "Tout"
+// (Safari-safe + Add modal: Numéro dropdown)
+
 /* Config (adapter si besoin) */
 const GITHUB_USER   = "mich59139";
 const GITHUB_REPO   = "AHPV";
@@ -22,17 +24,16 @@ const API_THE = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/cont
 const debounce = (fn, ms = 180) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
 const deburr  = s => (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[.\u00B7·]/g, " ").replace(/\s+/g, " ").trim();
 
-/* splitMulti SANS REGEX avec '&' (100% Safari) */
+/* splitMulti SANS regex contenant '&' (100% Safari) */
 function splitMulti(s) {
   if (!s) return [];
   let x = String(s);
-  // le mot "et" isolé -> ';'
+  // remplace le mot "et" isolé par ';'
   x = x.replace(/\bet\b/gi, ";");
-  // unifie tous les séparateurs usuels vers ';'
+  // unifie les autres séparateurs en ';'
   [";", ",", "/", "&", "•", "·"].forEach(sep => { x = x.split(sep).join(";"); });
   return x.split(";").map(v => v.trim()).filter(Boolean);
 }
-
 const uniqSorted = arr => Array.from(new Set(arr)).sort((a, b) => ("" + a).localeCompare("" + b, "fr", { numeric: true }));
 
 /* State */
@@ -209,8 +210,7 @@ function populateDatalists() {
   const dlT = document.getElementById("dl-themes");
   if (dlA) dlA.innerHTML = (LISTS.auteurs.length ? LISTS.auteurs : Array.from(CANON.auteurs.values())).slice(0, 2000).map(x => `<option value="${x}">`).join("");
   if (dlV) dlV.innerHTML = (LISTS.villes.length  ? LISTS.villes  : Array.from(CANON.villes.values())).slice(0, 2000).map(x => `<option value="${x}">`).join("");
-  if (dlT) dlT.innerHTML = (LISTS.themes.length  ? LISTS.themes  : Array.from(new Set((ARTICLES || []).flatMap(r => splitMulti(r["Theme(s)"])))))
-                           .slice(0, 2000).map(x => `<option value="${x}">`).join("");
+  if (dlT) dlT.innerHTML = (LISTS.themes.length  ? LISTS.themes  : Array.from(new Set((ARTICLES || []).flatMap(r => splitMulti(r["Theme(s)"]))))).slice(0, 2000).map(x => `<option value="${x}">`).join("");
 }
 function normaliseMulti(s, kind) {
   const map = (kind === "auteurs") ? CANON.auteurs : CANON.villes;
@@ -377,13 +377,63 @@ window._inlineSave = async () => {
 };
 
 /* Ajout / Suppression */
-window._openAddModal = () => { const d = document.getElementById("add-modal"); document.getElementById("add-form")?.reset(); d?.showModal(); document.getElementById("a-annee")?.focus(); };
-document.getElementById("add-cancel")?.addEventListener("click", () => document.getElementById("add-modal")?.close());
+function getNumbersForYear(year){
+  let nums = ARTICLES
+    .filter(r => !year || (r["Année"]||"")==year)
+    .map(r => (r["Numéro"]==null ? "" : (""+r["Numéro"]).trim()))
+    .filter(Boolean);
+  nums = Array.from(new Set(nums));
+  nums.sort((a,b)=> (""+a).localeCompare(""+b,"fr",{numeric:true}));
+  return nums;
+}
+function refreshAddNumeroOptions(){
+  const year = document.getElementById("a-annee")?.value?.trim() || "";
+  const sel  = document.getElementById("a-numero");
+  if (!sel || sel.tagName !== "SELECT") return;
+  const nums = getNumbersForYear(year);
+  const cur  = sel.value;
+  sel.innerHTML =
+    '<option value="">(choisir)</option>' +
+    nums.map(n=>`<option value="${n}">${n}</option>`).join("") +
+    '<option value="__NEW__">— Nouveau numéro… —</option>';
+  if (nums.includes(cur)) sel.value=cur; else sel.value="";
+  const ni = document.getElementById("a-numero-new");
+  if (ni){ ni.classList.add("hidden"); ni.value=""; }
+}
+
+window._openAddModal = ()=>{
+  const d=document.getElementById("add-modal");
+  document.getElementById("add-form")?.reset();
+  refreshAddNumeroOptions();
+  d?.showModal();
+  document.getElementById("a-annee")?.focus();
+};
+document.getElementById("add-cancel")?.addEventListener("click", ()=> document.getElementById("add-modal")?.close());
+document.getElementById("a-annee")?.addEventListener("input",  refreshAddNumeroOptions);
+document.getElementById("a-annee")?.addEventListener("change", refreshAddNumeroOptions);
+document.getElementById("a-numero")?.addEventListener("change", ()=>{
+  const sel = document.getElementById("a-numero");
+  const ni  = document.getElementById("a-numero-new");
+  if (!sel || !ni) return;
+  if (sel.value === "__NEW__"){ ni.classList.remove("hidden"); ni.focus(); }
+  else { ni.classList.add("hidden"); ni.value=""; }
+});
+
 document.getElementById("add-form")?.addEventListener("submit", async (e) => {
   e.preventDefault();
+  const selEl = document.getElementById("a-numero");
+  let numVal = "";
+  if (selEl && selEl.tagName === "SELECT"){
+    const selVal = selEl.value;
+    numVal = (selVal === "__NEW__") ? (document.getElementById("a-numero-new")?.value.trim() || "") : selVal;
+  } else {
+    numVal = document.getElementById("a-numero")?.value.trim() || "";
+  }
+  if (!numVal){ alert("Choisissez un numéro ou saisissez un nouveau numéro."); return; }
+
   const rowRaw = {
     "Année":   document.getElementById("a-annee").value.trim(),
-    "Numéro":  document.getElementById("a-numero").value.trim(),
+    "Numéro":  numVal,
     "Titre":   document.getElementById("a-titre").value.trim(),
     "Page(s)": document.getElementById("a-pages").value.trim(),
     "Auteur(s)": document.getElementById("a-auteurs").value.trim(),
@@ -403,6 +453,7 @@ document.getElementById("add-form")?.addEventListener("submit", async (e) => {
   try { await saveToGitHubMerged(ARTICLES, "Ajout d'article"); }
   catch (e) { console.error(e); alert("Échec du commit GitHub"); }
 });
+
 window._deleteRow = async (idx) => {
   if (!confirm("Supprimer cette ligne ?")) return;
   ARTICLES.splice(idx, 1);
@@ -643,7 +694,6 @@ async function init() {
   render();
   showLoading(false);
 }
-// Si le script n'est pas chargé avec 'defer', on s'assure que ça démarre:
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", init);
 } else {
