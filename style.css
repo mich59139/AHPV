@@ -4,7 +4,7 @@
   --text: #3a342b;
   --muted:#6b645a;
   --border:#e3d8be;
-  --accent:#6b8a21; /* touche olive légère */
+  --accent:#6b8a21; /* olive légère */
   --ghost:#c9bfa3;
   --danger:#b6423c;
   --radius:14px;
@@ -37,7 +37,7 @@ body{
 .badges .sep{ opacity:.5; }
 .badges .grow{ flex:1 1 auto; }
 
-/* Panels */
+/* Panels & fields */
 .panel{
   background:var(--panel);
   border:1px solid var(--border);
@@ -64,19 +64,26 @@ input[type="text"], input[type="search"], select{
 .btn.ghost{ background:#fff; color:var(--text); border:1px solid var(--border); }
 .btn:disabled{ opacity:.5; cursor:not-allowed; }
 
+/* Table */
 .table-wrap{ overflow:auto; }
-.table{ width:100%; border-collapse:separate; border-spacing:0; }
+.table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:auto; }
 .table th, .table td{
   padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;
 }
 .table thead th{
   position:sticky; top:0; background:var(--panel); z-index:1; cursor:pointer; user-select:none;
 }
+.table tbody tr:nth-child(odd){ background: rgba(0,0,0,.03); }
+
 .table th.sort-asc::after{ content:" ▲"; color:var(--muted); }
 .table th.sort-desc::after{ content:" ▼"; color:var(--muted); }
 
-.table td .actions, .table th .actions{ display:flex; gap:6px; }
+button.edit, button.del{
+  border:1px solid var(--border); background:#fff; border-radius:8px; padding:4px 8px; cursor:pointer;
+}
+button.del{ color:#fff; background:var(--danger); border-color:var(--danger); }
 
+/* Pager */
 .pager{ display:flex; align-items:center; gap:10px; justify-content:center; padding-top:8px; color:var(--muted); }
 
 /* Dialogs */
@@ -97,6 +104,7 @@ input[type="text"], input[type="search"], select{
 .tab{ border:1px solid var(--border); background:#fff; padding:8px 10px; border-radius:999px; cursor:pointer; }
 .tab.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
 .count{ margin-left:auto; color:var(--muted); }
+
 .lists .editor{ display:flex; gap:8px; align-items:center; padding:10px 18px; }
 .lists .editor input{ flex:1 1 auto; }
 .items{ list-style:none; margin:0; padding:10px 18px 18px; display:grid; gap:8px; max-height:52vh; overflow:auto; }
@@ -105,13 +113,33 @@ input[type="text"], input[type="search"], select{
 .items button{ border:1px solid var(--border); background:#fff; border-radius:8px; padding:6px 8px; cursor:pointer; }
 .items button.del{ color:#fff; background:var(--danger); border-color:var(--danger); }
 
+/* Overlay chargement */
 .loading{
   position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
   background:rgba(255,255,255,.6); font-weight:700; font-size:18px; z-index:30;
 }
 
-/* Small helpers for inline row buttons */
-button.edit, button.del{
-  border:1px solid var(--border); background:#fff; border-radius:8px; padding:4px 8px; cursor:pointer;
+/* --------- Nettoyage des contrôles natifs visibles dans les cellules (Safari etc.) -------- */
+.table tbody tr:not(.editing) input,
+.table tbody tr:not(.editing) select{
+  appearance:none; -webkit-appearance:none;
+  border:0; background:transparent; padding:0; margin:0; pointer-events:none; color:inherit;
 }
-button.del{ color:#fff; background:var(--danger); border-color:var(--danger); }
+.table tbody tr:not(.editing) input[type="checkbox"],
+.table tbody tr:not(.editing) input[type="radio"]{ display:none; }
+
+/* --------- FORCER le mode LISTE (table) sur mobile : pas de cartes --------- */
+@media (max-width: 820px) {
+  .table      { display: table; width: 100%; table-layout: auto; }
+  .table thead{ display: table-header-group; }
+  .table tbody{ display: table-row-group; }
+  .table tr   { display: table-row; }
+  .table th,
+  .table td   { display: table-cell; padding: 8px 10px; font-size:14px; line-height:1.35; }
+
+  /* si un ancien mode "cartes" existait avec data-label, on neutralise */
+  .table td::before { content: none !important; display: none !important; }
+
+  /* scroll horizontal si nécessaire */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
