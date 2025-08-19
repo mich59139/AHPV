@@ -1,5 +1,6 @@
 // AHPV — Catalogue + mini-éditeur des listes + exports "Tout"
 // Ajouts : Époques (datalist + filtre) • "Nouveau numéro…" en premier + pré-rempli "Mémoire n°" • anti-cache réseau
+//          Rafraîchissement immédiat des <datalist> quand on modifie les Listes (ajout/renommer/suppression/import)
 
 /* Config */
 const GITHUB_USER   = "mich59139";
@@ -222,7 +223,7 @@ function titleSimilarity(a,b){
   const union=setA.size+setB.size-inter;
   const jacc=inter/union;
   const lenBonus=Math.min(ta.length,tb.length)/Math.max(ta.length,tb.length);
-  return 0.7*jacc+0.3*lenBonus;
+  return 0.7+jacc+0.3*lenBonus;
 }
 function findSimilarTitle(row, excludeIndex=-1){
   let best={idx:-1, score:0}; const tNew=row["Titre"]||"";
@@ -386,6 +387,7 @@ function normalizeNumeroInput(s){
 window._openAddModal=()=>{
   const d=document.getElementById("add-modal");
   document.getElementById("add-form")?.reset();
+  populateDatalists();              // <-- rafraîchit les suggestions juste avant d’ouvrir
   refreshAddNumeroOptions();
   d?.showModal();
   document.getElementById("a-annee")?.focus();
@@ -552,7 +554,7 @@ function bindAuth(){
   document.getElementById("logout-btn")?.addEventListener("click", githubLogout);
 }
 
-/* List editor (Auteurs/Villes/Thèmes/Époques) avec Renommer */
+/* List editor (Auteurs/Villes/Thèmes/Époques) avec Renommer + rafraîchissement immédiat */
 function bindListsEditor(){
   const btn=document.getElementById("lists-btn");
   const dlg=document.getElementById("lists-modal");
@@ -579,6 +581,14 @@ function bindListsEditor(){
 
   function escapeHTML(s){ return (s??"").toString().replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
 
+  // >>> Rafraîchit immédiatement les suggestions UI quand on édite la liste courante
+  function previewListsToUI(){
+    LISTS[KIND] = Array.from(WORK);
+    buildCanonFromLists();
+    populateDatalists();
+    refreshEpoqueOptions();
+  }
+
   function refresh(){
     countSpan.textContent=`${WORK.length} élément(s)`;
     itemsUL.innerHTML = WORK.map((val,idx)=>`
@@ -603,7 +613,7 @@ function bindListsEditor(){
     const v=nv.trim(); if(!v) return;
     const exists=WORK.some((x,j)=> j!==i && x.toLowerCase()===v.toLowerCase());
     if(exists){ alert("Cet élément existe déjà dans la liste."); return; }
-    WORK[i]=v; refresh();
+    WORK[i]=v; refresh(); previewListsToUI();   // <<< IMMÉDIAT
   }
 
   btn.addEventListener("click", ()=>{ setKind("auteurs"); dlg.showModal(); input.focus(); });
@@ -613,22 +623,22 @@ function bindListsEditor(){
   addBtn.addEventListener("click", ()=>{
     const v=(input.value||"").trim(); if(!v) return;
     if(!WORK.some(x=>x.toLowerCase()===v.toLowerCase())) WORK.push(v);
-    input.value=""; refresh();
+    input.value=""; refresh(); previewListsToUI();      // <<< IMMÉDIAT
   });
   input.addEventListener("keydown",(e)=>{ if(e.key==="Enter"){ e.preventDefault(); addBtn.click(); } });
 
   itemsUL.addEventListener("click",(e)=>{
     const ed=e.target.closest(".edit"); if(ed){ renameAt(+ed.dataset.i); return; }
-    const del=e.target.closest(".del"); if(del){ const i=+del.dataset.i; WORK.splice(i,1); refresh(); }
+    const del=e.target.closest(".del"); if(del){ const i=+del.dataset.i; WORK.splice(i,1); refresh(); previewListsToUI(); } // <<< IMMÉDIAT
   });
   itemsUL.addEventListener("dblclick",(e)=>{
     const li=e.target.closest("li[data-i]"); if(!li) return; renameAt(+li.dataset.i);
   });
 
-  sortBtn.addEventListener("click", ()=>{ WORK.sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"})); refresh(); });
+  sortBtn.addEventListener("click", ()=>{ WORK.sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"})); refresh(); previewListsToUI(); }); // <<< IMMÉDIAT
   dedupeBtn.addEventListener("click", ()=>{
     const seen=new Set(); const out=[]; for(const v of WORK){ const k=v.toLowerCase(); if(!seen.has(k)){ seen.add(k); out.push(v); } }
-    WORK=out; refresh();
+    WORK=out; refresh(); previewListsToUI();            // <<< IMMÉDIAT
   });
 
   importBtn.addEventListener("click", ()=> fileInp.click());
@@ -636,7 +646,7 @@ function bindListsEditor(){
     const f=fileInp.files?.[0]; if(!f) return;
     const txt=await f.text(); const list=parseOneColCSV(txt);
     WORK=Array.from(new Set([...WORK, ...list])).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
-    fileInp.value=""; refresh();
+    fileInp.value=""; refresh(); previewListsToUI();    // <<< IMMÉDIAT
   });
 
   exportBtn.addEventListener("click", ()=>{
@@ -647,7 +657,7 @@ function bindListsEditor(){
 
   saveBtn.addEventListener("click", async ()=>{
     LISTS[KIND]=Array.from(WORK);
-    buildCanonFromLists(); populateDatalists();
+    buildCanonFromLists(); populateDatalists(); refreshEpoqueOptions();
     try{
       const ok=await saveListToGitHub(apiOf(KIND), `data/${KIND}.csv`, WORK, headerOf(KIND));
       if(ok) alert("Liste enregistrée sur GitHub ✅");
