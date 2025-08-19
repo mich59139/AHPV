@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>AHPV – Catalogue des Articles</title>
   <link rel="icon" href="assets/favicon.png" type="image/png" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="shell">
@@ -37,6 +37,11 @@
       <label>Numéro
         <select id="filter-numero" aria-label="Filtrer par numéro">
           <option value="">(tous)</option>
+        </select>
+      </label>
+      <label>Époque
+        <select id="filter-epoque" aria-label="Filtrer par époque">
+          <option value="">(toutes)</option>
         </select>
       </label>
       <label class="grow">Recherche
@@ -93,20 +98,14 @@
         <h3>Ajouter un article</h3>
         <div class="grid">
           <label>Année
-            <input id="a-annee" inputmode="numeric" pattern="[0-9]*" required />
+            <input id="a-annee" required />
           </label>
 
           <label>Numéro
-            <!-- "Nouveau numéro…" est injecté EN PREMIER par app.js -->
             <select id="a-numero" required>
               <option value="">(choisir)</option>
             </select>
-
-            <!-- wrapper qui montre "Mémoire n°" + champ -->
-            <div id="a-numero-new-wrap" class="hidden numero-wrap">
-              <span class="prefix">Mémoire n°</span>
-              <input id="a-numero-new" inputmode="numeric" pattern="[0-9]*" placeholder="ex : 68" />
-            </div>
+            <input id="a-numero-new" class="hidden" value="" placeholder="Mémoire n°…" />
           </label>
 
           <label>Titre
@@ -147,7 +146,7 @@
         <div class="help-body">
           <h4>Listes séparées</h4>
           <ul>
-            <li>Suggestions depuis <code>data/auteurs.csv</code>, <code>data/villes.csv</code>, <code>data/themes.csv</code>.</li>
+            <li>Suggestions depuis <code>data/auteurs.csv</code>, <code>data/villes.csv</code>, <code>data/themes.csv</code>, <code>data/epoques.csv</code>.</li>
           </ul>
           <h4>Exports</h4>
           <ul>
@@ -166,6 +165,7 @@
           <button data-kind="auteurs" class="tab active">Auteurs</button>
           <button data-kind="villes"  class="tab">Villes</button>
           <button data-kind="themes"  class="tab">Thèmes</button>
+          <button data-kind="epoques" class="tab">Époques</button>
           <span id="list-count" class="count"></span>
         </nav>
 
@@ -195,6 +195,13 @@
     <datalist id="dl-epoques"></datalist>
   </div>
 
-  <script src="app.js" defer></script>
+  <!-- Anti-cache basique côté script -->
+  <script>
+    const v = Date.now();
+    const s = document.createElement('script');
+    s.src = 'app.js?_=' + v;
+    s.defer = true;
+    document.body.appendChild(s);
+  </script>
 </body>
 </html>
