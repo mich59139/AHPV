@@ -67,6 +67,16 @@ th.sort-desc::after{content:" ▼";color:var(--muted);font-size:.8em}
 .grid label{font-size:.9rem}
 .grid input,.grid select{width:100%}
 
+/* Nouveau numéro : "Mémoire n°" + input */
+.numero-wrap{
+  margin-top:6px;
+  display:flex; align-items:center; gap:6px;
+}
+.numero-wrap .prefix{
+  background:#fff; border:1px solid var(--line); border-radius:8px;
+  padding:8px 10px; font-size:.92rem; color:#444;
+}
+
 .tabs{display:flex;gap:8px;align-items:center;margin-bottom:8px}
 .tab{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;cursor:pointer}
 .tab.active{background:#ffe6a8;border-color:#e2c686}
