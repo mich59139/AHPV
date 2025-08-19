@@ -1,6 +1,7 @@
 // AHPV — Catalogue + mini-éditeur des listes + exports "Tout"
-// Ajouts : Époques (datalist + filtre) • "Nouveau numéro…" en premier + pré-rempli "Mémoire n°" • anti-cache réseau
-//          Rafraîchissement immédiat des <datalist> quand on modifie les Listes (ajout/renommer/suppression/import)
+// Ajouts : Époques (datalist + filtre) • "Nouveau numéro…" en premier + pré-rempli "Mémoire n°"
+//          Anti-cache sur fetch • Datalists mises à jour en direct depuis “Listes”
+//          Sauvegarde fluide : commit GitHub regroupé (file d’attente) + badge d’état
 
 /* Config */
 const GITHUB_USER   = "mich59139";
@@ -42,6 +43,83 @@ let editingIndex=-1;
 let GHTOKEN = localStorage.getItem("ghtoken") || "";
 let LISTS   = { auteurs:[], villes:[], themes:[], epoques:[] };
 let CANON   = { auteurs:new Map(), villes:new Map() };
+
+/* --- Sauvegarde fluide (file d’attente + badge + toast) --- */
+let SAVE_Q = { timer:null, running:false, pending:null };
+let SAVE_BADGE = null;
+let AUTO_SAVE_SILENT=false;
+
+function setupSaveBadge(){
+  const panel = document.querySelector('.panel.badges');
+  if (!panel) return;
+  SAVE_BADGE = document.createElement('span');
+  SAVE_BADGE.id = 'status-save';
+  SAVE_BADGE.style.marginLeft = '8px';
+  panel.insertBefore(SAVE_BADGE, panel.querySelector('.grow'));
+}
+function setSaveBadge(txt){ if (SAVE_BADGE) SAVE_BADGE.textContent = txt || ""; }
+
+function toast(msg){
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.position='fixed'; t.style.left='50%'; t.style.bottom='16px';
+  t.style.transform='translateX(-50%)';
+  t.style.background='#222'; t.style.color='#fff'; t.style.padding='8px 12px';
+  t.style.borderRadius='10px'; t.style.fontSize='14px'; t.style.zIndex='9999';
+  t.style.boxShadow='0 6px 18px rgba(0,0,0,.25)';
+  document.body.appendChild(t);
+  setTimeout(()=>{ t.style.transition='opacity .25s'; t.style.opacity='0';
+    setTimeout(()=>t.remove(), 250);
+  }, 1400);
+}
+
+async function saveToGitHubRaw(csvText, message="Mise à jour catalogue"){
+  if(!GHTOKEN) throw new Error("Pas de token");
+  let sha; try{ sha = await getShaFor(API_ART);}catch{ sha = null; }
+  const content = btoa(unescape(encodeURIComponent(csvText)));
+  const body = { message, content, branch: GITHUB_BRANCH };
+  if (sha) body.sha = sha;
+  const res = await fetch(API_ART, {
+    method:"PUT",
+    headers:{ "Content-Type":"application/json", Authorization:`token ${GHTOKEN}` },
+    body: JSON.stringify(body)
+  });
+  if(!res.ok) throw new Error("Échec commit");
+}
+
+function enqueueSave(message="Mise à jour catalogue"){
+  if(!GHTOKEN){ // invité : pas de commit, UI seulement
+    if(!AUTO_SAVE_SILENT) toast("Modifié localement — cliquez 🔐 pour enregistrer");
+    return;
+  }
+  SAVE_Q.pending = { message };
+  if (SAVE_Q.timer) clearTimeout(SAVE_Q.timer);
+  SAVE_Q.timer = setTimeout(runQueuedSave, 1200); // regroupe pendant 1,2s
+  setSaveBadge("💾 Enregistrement…");
+}
+
+async function runQueuedSave(){
+  const payload = SAVE_Q.pending; SAVE_Q.pending = null; SAVE_Q.timer = null;
+  if (!payload) return;
+  if (SAVE_Q.running){
+    SAVE_Q.pending = payload;
+    SAVE_Q.timer = setTimeout(runQueuedSave, 800);
+    return;
+  }
+  SAVE_Q.running = true;
+  try{
+    await saveToGitHubRaw(toCSV(ARTICLES), payload.message);
+    setSaveBadge("✅ Synchronisé");
+    setTimeout(()=> setSaveBadge(""), 2000);
+  }catch(e){
+    console.error(e);
+    setSaveBadge("⚠️ Échec");
+    toast("❌ Échec d’enregistrement GitHub");
+  }finally{
+    SAVE_Q.running = false;
+    if (SAVE_Q.pending) runQueuedSave();
+  }
+}
 
 /* CSV parsing */
 function parseCSV(text){
@@ -137,7 +215,7 @@ async function fetchCSVList(rawUrl, relPath){
   return [];
 }
 
-/* GitHub save */
+/* GitHub save (utilisé par lists + login auto-commit) */
 async function getShaFor(apiUrl){
   const r=await fetch(apiUrl,{headers:{Authorization:`token ${GHTOKEN}`}});
   if(!r.ok) throw new Error("SHA introuvable "+apiUrl);
@@ -178,7 +256,9 @@ function buildCanonFromArticles(){
     const canon=new Map();
     for(const [key,info] of freq){
       let bestForm="", bestCount=-1;
-      for(const [form,c] of info.forms){ if(c>bestCount || (c===bestCount && form.length>bestForm.length)){ bestCount=c; bestForm=form; } }
+      for(const [form,c] of info.forms){
+        if(c>bestCount || (c===bestCount && form.length>bestForm.length)){ bestCount=c; bestForm=form; }
+      }
       canon.set(key,bestForm);
     }
     return canon;
@@ -223,7 +303,7 @@ function titleSimilarity(a,b){
   const union=setA.size+setB.size-inter;
   const jacc=inter/union;
   const lenBonus=Math.min(ta.length,tb.length)/Math.max(ta.length,tb.length);
-  return 0.7+jacc+0.3*lenBonus;
+  return 0.7*jacc + 0.3*lenBonus; // (corrigé d’un 0.7+…)
 }
 function findSimilarTitle(row, excludeIndex=-1){
   let best={idx:-1, score:0}; const tNew=row["Titre"]||"";
@@ -324,7 +404,6 @@ function render(){
 }
 
 /* Inline edit */
-let AUTO_SAVE_SILENT=false;
 window._editRow=(idx)=>{ try{ if(matchMedia("(max-width:800px)").matches) _inlineEdit(idx); }catch{ _inlineEdit(idx); } };
 window._inlineEdit=(idx)=>{
   editingIndex=idx; render();
@@ -348,8 +427,7 @@ window._inlineSave=async ()=>{
   };
   const updated=normaliseRowFields(updatedRaw);
   ARTICLES[editingIndex]=updated; editingIndex=-1; render();
-  if(!GHTOKEN){ if(!AUTO_SAVE_SILENT) alert("Modifié localement. Cliquez 🔐 pour enregistrer ensuite."); return; }
-  try{ await saveToGitHubMerged(ARTICLES,"Édition ligne"); }catch(e){ console.error(e); alert("Échec de l'enregistrement GitHub"); }
+  enqueueSave("Édition ligne");
 };
 
 /* Ajout / Suppression */
@@ -387,7 +465,7 @@ function normalizeNumeroInput(s){
 window._openAddModal=()=>{
   const d=document.getElementById("add-modal");
   document.getElementById("add-form")?.reset();
-  populateDatalists();              // <-- rafraîchit les suggestions juste avant d’ouvrir
+  populateDatalists();              // rafraîchit les suggestions juste avant d’ouvrir
   refreshAddNumeroOptions();
   d?.showModal();
   document.getElementById("a-annee")?.focus();
@@ -432,14 +510,12 @@ document.getElementById("add-form")?.addEventListener("submit", async (e)=>{
   document.getElementById("add-modal")?.close();
   currentPage=Math.ceil(ARTICLES.length/pageSize);
   render();
-  if(!GHTOKEN){ alert("Ajout local. Cliquez 🔐 pour enregistrer ensuite."); return; }
-  try{ await saveToGitHubMerged(ARTICLES,"Ajout d'article"); }catch(e){ console.error(e); alert("Échec du commit GitHub"); }
+  enqueueSave("Ajout d'article");
 });
 window._deleteRow=async (idx)=>{
   if(!confirm("Supprimer cette ligne ?")) return;
   ARTICLES.splice(idx,1); render();
-  if(!GHTOKEN){ alert("Suppression locale. Cliquez 🔐 pour enregistrer ensuite."); return; }
-  try{ await saveToGitHubMerged(ARTICLES,"Suppression"); }catch(e){ console.error(e); alert("Échec commit"); }
+  enqueueSave("Suppression");
 };
 
 /* Filtres / tri / pagination */
@@ -581,7 +657,7 @@ function bindListsEditor(){
 
   function escapeHTML(s){ return (s??"").toString().replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
 
-  // >>> Rafraîchit immédiatement les suggestions UI quand on édite la liste courante
+  // Rafraîchit immédiatement les suggestions UI quand on édite la liste courante
   function previewListsToUI(){
     LISTS[KIND] = Array.from(WORK);
     buildCanonFromLists();
@@ -613,7 +689,7 @@ function bindListsEditor(){
     const v=nv.trim(); if(!v) return;
     const exists=WORK.some((x,j)=> j!==i && x.toLowerCase()===v.toLowerCase());
     if(exists){ alert("Cet élément existe déjà dans la liste."); return; }
-    WORK[i]=v; refresh(); previewListsToUI();   // <<< IMMÉDIAT
+    WORK[i]=v; refresh(); previewListsToUI();
   }
 
   btn.addEventListener("click", ()=>{ setKind("auteurs"); dlg.showModal(); input.focus(); });
@@ -623,22 +699,22 @@ function bindListsEditor(){
   addBtn.addEventListener("click", ()=>{
     const v=(input.value||"").trim(); if(!v) return;
     if(!WORK.some(x=>x.toLowerCase()===v.toLowerCase())) WORK.push(v);
-    input.value=""; refresh(); previewListsToUI();      // <<< IMMÉDIAT
+    input.value=""; refresh(); previewListsToUI();
   });
   input.addEventListener("keydown",(e)=>{ if(e.key==="Enter"){ e.preventDefault(); addBtn.click(); } });
 
   itemsUL.addEventListener("click",(e)=>{
     const ed=e.target.closest(".edit"); if(ed){ renameAt(+ed.dataset.i); return; }
-    const del=e.target.closest(".del"); if(del){ const i=+del.dataset.i; WORK.splice(i,1); refresh(); previewListsToUI(); } // <<< IMMÉDIAT
+    const del=e.target.closest(".del"); if(del){ const i=+del.dataset.i; WORK.splice(i,1); refresh(); previewListsToUI(); }
   });
   itemsUL.addEventListener("dblclick",(e)=>{
     const li=e.target.closest("li[data-i]"); if(!li) return; renameAt(+li.dataset.i);
   });
 
-  sortBtn.addEventListener("click", ()=>{ WORK.sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"})); refresh(); previewListsToUI(); }); // <<< IMMÉDIAT
+  sortBtn.addEventListener("click", ()=>{ WORK.sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"})); refresh(); previewListsToUI(); });
   dedupeBtn.addEventListener("click", ()=>{
     const seen=new Set(); const out=[]; for(const v of WORK){ const k=v.toLowerCase(); if(!seen.has(k)){ seen.add(k); out.push(v); } }
-    WORK=out; refresh(); previewListsToUI();            // <<< IMMÉDIAT
+    WORK=out; refresh(); previewListsToUI();
   });
 
   importBtn.addEventListener("click", ()=> fileInp.click());
@@ -646,7 +722,7 @@ function bindListsEditor(){
     const f=fileInp.files?.[0]; if(!f) return;
     const txt=await f.text(); const list=parseOneColCSV(txt);
     WORK=Array.from(new Set([...WORK, ...list])).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
-    fileInp.value=""; refresh(); previewListsToUI();    // <<< IMMÉDIAT
+    fileInp.value=""; refresh(); previewListsToUI();
   });
 
   exportBtn.addEventListener("click", ()=>{
@@ -684,6 +760,7 @@ async function init(){
     refreshEpoqueOptions();
 
     bindFilters(); bindSorting(); bindPager(); bindExports(); bindHelp(); bindAuth(); bindListsEditor();
+    setupSaveBadge();
     render();
   }catch(err){
     console.error("INIT FAILED", err);
