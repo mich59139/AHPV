@@ -1,5 +1,5 @@
-// AHPV — Catalogue + mini-éditeur des listes + exports "Tout"
-// (Safari-safe) + "Nouveau numéro…" EN PREMIER + Renommer éléments des listes
+// AHPV — Catalogue (+ listes) — Ajout : datalist Époque + "Mémoire n°" pour nouveaux numéros
+// Inclut anti-cache léger pour éviter les versions en cache côté navigateur.
 
 /* Config */
 const GITHUB_USER   = "mich59139";
@@ -23,16 +23,9 @@ const API_THE = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/cont
 /* Utils */
 const debounce = (fn, ms=180)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); } };
 const deburr   = s=>(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[.\u00B7·]/g," ").replace(/\s+/g," ").trim();
-
-/* Séparateurs multiples — sans regex contenant & (OK Safari) */
-function splitMulti(s){
-  if(!s) return [];
-  let x = String(s);
-  x = x.replace(/\bet\b/gi, ";");         // mot "et" isolé -> ;
-  [";",",","/","&","•","·"].forEach(sep=>{ x = x.split(sep).join(";"); });
-  return x.split(";").map(v=>v.trim()).filter(Boolean);
-}
+function splitMulti(s){ if(!s) return []; let x=String(s); x=x.replace(/\bet\b/gi,";"); [";",",","/","&","•","·"].forEach(sep=>{ x=x.split(sep).join(";"); }); return x.split(";").map(v=>v.trim()).filter(Boolean); }
 const uniqSorted = arr => Array.from(new Set(arr)).sort((a,b)=>(""+a).localeCompare(""+b,"fr",{numeric:true}));
+const withNoCache = url => url + (url.includes("?") ? "&" : "?") + "_=" + Date.now();
 
 /* State */
 let ARTICLES=[];
@@ -44,23 +37,22 @@ let GHTOKEN = localStorage.getItem("ghtoken") || "";
 let LISTS   = { auteurs:[], villes:[], themes:[] };
 let CANON   = { auteurs:new Map(), villes:new Map() };
 
-/* CSV parsing */
+/* CSV helpers */
 function parseCSV(text){
   text=(text||"").replace(/^\uFEFF/,"");
-  const first = text.split(/\r?\n/,1)[0]||"";
-  const d = (first.includes(";") && !first.includes(",")) ? ";" : ",";
-  const lines = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
+  const first=text.split(/\r?\n/,1)[0]||"";
+  const d=(first.includes(";") && !first.includes(","))?";":",";
+  const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
   if(!lines.length) return [];
-  const header = splitCSVLine(lines.shift(), d);
+  const header=splitCSVLine(lines.shift(), d);
   const out=[];
   for(const ln of lines){
     if(!ln.trim()) continue;
-    const row = splitCSVLine(ln, d);
+    const row=splitCSVLine(ln, d);
     const o={}; header.forEach((h,i)=>o[h]=row[i]??"");
     out.push(o);
   }
   return out;
-
   function splitCSVLine(ln, d){
     const row=[]; let cur=""; let q=false;
     for(let i=0;i<ln.length;i++){
@@ -81,10 +73,10 @@ function parseCSV(text){
 }
 function parseOneColCSV(text){
   text=(text||"").replace(/^\uFEFF/,"");
-  const lines = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n").map(x=>x.trim()).filter(Boolean);
+  const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n").map(x=>x.trim()).filter(Boolean);
   if(!lines.length) return [];
-  const head = (lines[0]||"").toLowerCase();
-  const content = (/auteur|ville|th[eè]me/.test(head)) ? lines.slice(1) : lines;
+  const head=(lines[0]||"").toLowerCase();
+  const content=(/auteur|ville|th[eè]me/.test(head)) ? lines.slice(1) : lines;
   return Array.from(new Set(content)).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
 }
 function toCSV(rows){
@@ -102,9 +94,9 @@ function toTSV(rows){
 }
 function listToCSV(items, header){ return [header, ...items].join("\n")+"\n"; }
 
-/* Fetch */
+/* Fetch (anti-cache) */
 async function fetchText(url){
-  const r=await fetch(url,{cache:"no-store"});
+  const r=await fetch(withNoCache(url), {cache:"no-store"});
   if(!r.ok) throw new Error("fetch "+url+" -> "+r.status);
   return r.text();
 }
@@ -113,7 +105,7 @@ async function fetchCSVArticles(){
   for(const u of tries){
     try{
       if(u.endsWith("#api")){
-        const res=await fetch(API_ART,{cache:"no-store"});
+        const res=await fetch(withNoCache(API_ART), {cache:"no-store"});
         if(!res.ok) throw new Error("api "+res.status);
         const j=await res.json();
         const content=atob((j.content||"").replace(/\n/g,""));
@@ -132,7 +124,7 @@ async function fetchCSVList(rawUrl, relPath){
   for(const u of tries){
     try{
       if(u.endsWith("#api")){
-        const res=await fetch(API,{cache:"no-store"});
+        const res=await fetch(withNoCache(API), {cache:"no-store"});
         if(!res.ok) throw new Error("api "+res.status);
         const j=await res.json();
         const content=atob((j.content||"").replace(/\n/g,""));
@@ -199,9 +191,16 @@ function populateDatalists(){
   const dlA=document.getElementById("dl-auteurs");
   const dlV=document.getElementById("dl-villes");
   const dlT=document.getElementById("dl-themes");
+  const dlE=document.getElementById("dl-epoques");
   if(dlA) dlA.innerHTML=(LISTS.auteurs.length?LISTS.auteurs:Array.from(CANON.auteurs.values())).slice(0,2000).map(x=>`<option value="${x}">`).join("");
   if(dlV) dlV.innerHTML=(LISTS.villes.length ?LISTS.villes :Array.from(CANON.villes.values())).slice(0,2000).map(x=>`<option value="${x}">`).join("");
   if(dlT) dlT.innerHTML=(LISTS.themes.length ?LISTS.themes :Array.from(new Set((ARTICLES||[]).flatMap(r=>splitMulti(r["Theme(s)"]||""))))).slice(0,2000).map(x=>`<option value="${x}">`).join("");
+  if(dlE){
+    const base = ["XXIe siècle","XXe siècle","XIXe siècle","XVIIIe siècle","XVIIe siècle","XVIe siècle","XVe siècle","XIVe siècle","XIIIe siècle","XIIe siècle","XIe siècle","Xe siècle","Moyen Âge","Antiquité","Préhistoire"];
+    const fromData = Array.from(new Set((ARTICLES||[]).map(r=>(r["Epoque"]||"").trim()).filter(Boolean)));
+    const all = uniqSorted(Array.from(new Set([...base, ...fromData])));
+    dlE.innerHTML = all.map(x=>`<option value="${x}">`).join("");
+  }
 }
 function normaliseMulti(s, kind){
   const map=(kind==="auteurs")?CANON.auteurs:CANON.villes;
@@ -214,6 +213,23 @@ function normaliseRowFields(row){
     "Auteur(s)": normaliseMulti(row["Auteur(s)"], "auteurs"),
     "Ville(s)" : normaliseMulti(row["Ville(s)"],  "villes")
   };
+}
+
+/* Numéro → format "Mémoire n°XX" */
+function formatNumero(v){
+  v = (v||"").trim();
+  if(!v) return v;
+  // déjà "Mémoire n°"
+  if(/^m[ée]moire\s*n[°º]?\s*/i.test(v)){
+    v = v.replace(/^m[ée]moire\s*n[°º]?\s*/i, "").trim();
+    return v ? `Mémoire n°${v}` : "Mémoire n°";
+  }
+  // "n° 12" → "Mémoire n°12"
+  if(/^n[°º]\s*\d+$/i.test(v)) return `Mémoire n°${v.replace(/^n[°º]\s*/i,"")}`;
+  // juste chiffres → "Mémoire n°XX"
+  if(/^\d+$/.test(v)) return `Mémoire n°${v}`;
+  // fallback
+  return `Mémoire n°${v}`;
 }
 
 /* Doublons titre (simple) */
@@ -316,352 +332,4 @@ function render(){
     if(th.dataset.col===sortCol) th.classList.add(sortDir==="asc"?"sort-asc":"sort-desc");
   });
 
-  const pages=Math.max(1, Math.ceil(total/pageSize));
-  document.getElementById("pageinfo").textContent = `${Math.min(currentPage,pages)} / ${pages} — ${total} ligne(s)`;
-  document.getElementById("prev").disabled = currentPage<=1;
-  document.getElementById("next").disabled = currentPage>=pages;
-
-  const sc=document.getElementById("status-count"); if(sc) sc.textContent=`Fichier: ✅ (${ARTICLES.length})`;
-  const sa=document.getElementById("status-auth");  if(sa) sa.textContent= GHTOKEN ? "🔐 Connecté" : "🔓 Invité";
-}
-
-/* Inline edit */
-let AUTO_SAVE_SILENT=false;
-window._editRow=(idx)=>{ try{ if(matchMedia("(max-width:800px)").matches) _inlineEdit(idx); }catch{ _inlineEdit(idx); } };
-window._inlineEdit=(idx)=>{
-  editingIndex=idx; render();
-  setTimeout(()=>document.getElementById("ei-titre")?.focus(),0);
-  const ids=["ei-annee","ei-numero","ei-titre","ei-pages","ei-auteurs","ei-villes","ei-themes","ei-epoque"];
-  const scheduleSave=debounce(()=>{ try{ AUTO_SAVE_SILENT=true; window._inlineSave?.(); } finally { AUTO_SAVE_SILENT=false; } }, 800);
-  ids.forEach(id=>{
-    const el=document.getElementById(id); if(!el) return;
-    el.addEventListener("change", scheduleSave,{passive:true});
-    el.addEventListener("blur",   scheduleSave,{passive:true});
-    el.addEventListener("keydown",(e)=>{ if(e.key==="Enter"){ e.preventDefault(); scheduleSave(); } if(e.key==="Escape"){ e.preventDefault(); window._inlineCancel?.(); } });
-  });
-};
-window._inlineCancel=()=>{ editingIndex=-1; render(); };
-window._inlineSave=async ()=>{
-  const i=editingIndex; if(i<0) return;
-  const v=id=>document.getElementById(id)?.value ?? "";
-  const updatedRaw={
-    "Année":v("ei-annee"), "Numéro":v("ei-numero"), "Titre":v("ei-titre"), "Page(s)":v("ei-pages"),
-    "Auteur(s)":v("ei-auteurs"), "Ville(s)":v("ei-villes"), "Theme(s)":v("ei-themes"), "Epoque":v("ei-epoque")
-  };
-  const updated=normaliseRowFields(updatedRaw);
-  ARTICLES[editingIndex]=updated; editingIndex=-1; render();
-  if(!GHTOKEN){ if(!AUTO_SAVE_SILENT) alert("Modifié localement. Cliquez 🔐 pour enregistrer ensuite."); return; }
-  try{ await saveToGitHubMerged(ARTICLES,"Édition ligne"); }catch(e){ console.error(e); alert("Échec de l'enregistrement GitHub"); }
-};
-
-/* Ajout / Suppression */
-function getNumbersForYear(year){
-  let nums=ARTICLES
-    .filter(r=>!year || (r["Année"]||"")==year)
-    .map(r=> (r["Numéro"]==null?"":(""+r["Numéro"]).trim()))
-    .filter(Boolean);
-  nums=Array.from(new Set(nums));
-  nums.sort((a,b)=>(""+a).localeCompare(""+b,"fr",{numeric:true}));
-  return nums;
-}
-function refreshAddNumeroOptions(){
-  const year=document.getElementById("a-annee")?.value?.trim()||"";
-  const sel=document.getElementById("a-numero");
-  if(!sel || sel.tagName!=="SELECT") return;
-  const nums=getNumbersForYear(year);
-  const cur=sel.value;
-  sel.innerHTML =
-    '<option value="__NEW__">— Nouveau numéro… —</option>'+ /* EN PREMIER */
-    '<option value="">(choisir)</option>'+
-    nums.map(n=>`<option value="${n}">${n}</option>`).join("");
-  if(nums.includes(cur)) sel.value=cur; else sel.value="";
-  const ni=document.getElementById("a-numero-new");
-  if(ni){ ni.classList.add("hidden"); ni.value=""; }
-}
-window._openAddModal=()=>{
-  const d=document.getElementById("add-modal");
-  document.getElementById("add-form")?.reset();
-  refreshAddNumeroOptions();
-  d?.showModal();
-  document.getElementById("a-annee")?.focus();
-};
-document.getElementById("add-cancel")?.addEventListener("click",()=>document.getElementById("add-modal")?.close());
-document.getElementById("a-annee")?.addEventListener("input", refreshAddNumeroOptions);
-document.getElementById("a-annee")?.addEventListener("change",refreshAddNumeroOptions);
-document.getElementById("a-numero")?.addEventListener("change",()=>{
-  const sel=document.getElementById("a-numero");
-  const ni =document.getElementById("a-numero-new");
-  if(!sel || !ni) return;
-  if(sel.value==="__NEW__"){ ni.classList.remove("hidden"); ni.focus(); }
-  else { ni.classList.add("hidden"); ni.value=""; }
-});
-document.getElementById("add-form")?.addEventListener("submit", async (e)=>{
-  e.preventDefault();
-  const selEl=document.getElementById("a-numero");
-  let numVal="";
-  if(selEl && selEl.tagName==="SELECT"){
-    const selVal=selEl.value;
-    numVal = (selVal==="__NEW__") ? (document.getElementById("a-numero-new")?.value.trim()||"") : selVal;
-  }else{
-    numVal = document.getElementById("a-numero")?.value.trim()||"";
-  }
-  if(!numVal){ alert("Choisissez un numéro ou saisissez un nouveau numéro."); return; }
-
-  const rowRaw={
-    "Année":document.getElementById("a-annee").value.trim(),
-    "Numéro":numVal,
-    "Titre":document.getElementById("a-titre").value.trim(),
-    "Page(s)":document.getElementById("a-pages").value.trim(),
-    "Auteur(s)":document.getElementById("a-auteurs").value.trim(),
-    "Ville(s)":document.getElementById("a-villes").value.trim(),
-    "Theme(s)":document.getElementById("a-themes").value.trim(),
-    "Epoque":document.getElementById("a-epoque").value.trim(),
-  };
-  const row=normaliseRowFields(rowRaw);
-  const dupExact=ARTICLES.find(r=> (r["Année"]===row["Année"] && r["Numéro"]===row["Numéro"] && r["Titre"]===row["Titre"]));
-  if(dupExact){ alert("Doublon exact (Année + Numéro + Titre)"); return; }
-  if(!checkDuplicateBeforeAdd(row)) return;
-  ARTICLES.push(row);
-  document.getElementById("add-modal")?.close();
-  currentPage=Math.ceil(ARTICLES.length/pageSize);
-  render();
-  if(!GHTOKEN){ alert("Ajout local. Cliquez 🔐 pour enregistrer ensuite."); return; }
-  try{ await saveToGitHubMerged(ARTICLES,"Ajout d'article"); }catch(e){ console.error(e); alert("Échec du commit GitHub"); }
-});
-window._deleteRow=async (idx)=>{
-  if(!confirm("Supprimer cette ligne ?")) return;
-  ARTICLES.splice(idx,1); render();
-  if(!GHTOKEN){ alert("Suppression locale. Cliquez 🔐 pour enregistrer ensuite."); return; }
-  try{ await saveToGitHubMerged(ARTICLES,"Suppression"); }catch(e){ console.error(e); alert("Échec commit"); }
-};
-
-/* Filtres / tri / pagination */
-function refreshNumeroOptions(){
-  const fy=document.getElementById("filter-annee");
-  const fn=document.getElementById("filter-numero");
-  if(!fy||!fn) return;
-  const year=fy.value;
-  let nums=ARTICLES
-    .filter(r=>!year || (r["Année"]||"")==year)
-    .map(r=>(r["Numéro"]==null?"":(""+r["Numéro"]).trim()))
-    .filter(Boolean);
-  nums=uniqSorted(nums);
-  const cur=fn.value;
-  fn.innerHTML='<option value="">(tous)</option>'+nums.map(n=>`<option value="${n}">${n}</option>`).join("");
-  if(nums.includes(cur)) fn.value=cur; else fn.value="";
-}
-function resetAllFilters(){
-  document.getElementById("filter-annee").value="";
-  document.getElementById("filter-numero").value="";
-  document.getElementById("search").value="";
-  FILTER_YEAR=""; FILTER_NUM=""; QUERY="";
-  sortCol=null; sortDir="asc"; currentPage=1;
-  refreshNumeroOptions(); render();
-}
-function bindFilters(){
-  const fy=document.getElementById("filter-annee");
-  const fn=document.getElementById("filter-numero");
-  const q =document.getElementById("search");
-  fy?.addEventListener("change", ()=>{
-    FILTER_YEAR=fy.value;
-    if(!FILTER_YEAR){ fn.value=""; q.value=""; FILTER_NUM=""; QUERY=""; sortCol=null; sortDir="asc"; currentPage=1; }
-    refreshNumeroOptions();
-    currentPage=1; render();
-  });
-  fn?.addEventListener("change", ()=>{ FILTER_NUM=fn.value; currentPage=1; render(); });
-  q?.addEventListener("input", debounce(()=>{ QUERY=q.value; currentPage=1; render(); },180));
-}
-function bindSorting(){
-  document.querySelectorAll("th[data-col]").forEach(th=>{
-    const col=th.dataset.col;
-    const act=()=>{
-      if(sortCol===col) sortDir=(sortDir==="asc"?"desc":"asc");
-      else { sortCol=col; sortDir="asc"; }
-      currentPage=1; render();
-    };
-    th.addEventListener("click", act);
-    th.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); act(); } });
-  });
-}
-function bindPager(){
-  document.getElementById("prev")?.addEventListener("click", ()=>{ if(currentPage>1){ currentPage--; render(); } });
-  document.getElementById("next")?.addEventListener("click", ()=>{ currentPage++; render(); });
-}
-
-/* Exports */
-async function ensureXLSX(){ if(window.XLSX) return; await new Promise((res,rej)=>{ const s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
-function download(name, text, mime="text/csv;charset=utf-8"){
-  const blob=new Blob([text],{type:mime});
-  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href);
-}
-function getFilteredRows(){ return applyFilters(); }
-function getAllRows(){ return ARTICLES.slice(); }
-function bindExports(){
-  document.getElementById("export-copy")?.addEventListener("click", async ()=>{
-    const tsv=toTSV(getFilteredRows());
-    try{ await navigator.clipboard.writeText(tsv); alert("Copié !"); }
-    catch{ download("articles_filtrés.tsv", tsv, "text/tab-separated-values;charset=utf-8"); }
-  });
-  document.getElementById("export-csv")?.addEventListener("click", ()=> download("articles_filtrés.csv", toCSV(getFilteredRows())));
-  document.getElementById("export-xlsx")?.addEventListener("click", async ()=>{
-    await ensureXLSX();
-    const COLS=["Année","Numéro","Titre","Page(s)","Auteur(s)","Ville(s)","Theme(s)","Epoque"];
-    const data=getFilteredRows().map(r=>{ const o={}; COLS.forEach(h=>o[h]=r[h]??""); return o; });
-    const wb=XLSX.utils.book_new(); const ws=XLSX.utils.json_to_sheet(data,{cellDates:false});
-    XLSX.utils.book_append_sheet(wb, ws, "Articles"); XLSX.writeFile(wb, "articles_filtrés.xlsx");
-  });
-  document.getElementById("export-print")?.addEventListener("click", ()=>window.print());
-  document.getElementById("export-csv-all")?.addEventListener("click", ()=> download("articles_tout.csv", toCSV(getAllRows())));
-  document.getElementById("export-xlsx-all")?.addEventListener("click", async ()=>{
-    await ensureXLSX();
-    const COLS=["Année","Numéro","Titre","Page(s)","Auteur(s)","Ville(s)","Theme(s)","Epoque"];
-    const data=getAllRows().map(r=>{ const o={}; COLS.forEach(h=>o[h]=r[h]??""); return o; });
-    const wb=XLSX.utils.book_new(); const ws=XLSX.utils.json_to_sheet(data,{cellDates:false});
-    XLSX.utils.book_append_sheet(wb, ws, "Catalogue"); XLSX.writeFile(wb, "articles_tout.xlsx");
-  });
-}
-
-/* Aide & Auth */
-function bindHelp(){
-  const d=document.getElementById("help-modal");
-  document.getElementById("help-btn")?.addEventListener("click", ()=> d.showModal());
-  document.getElementById("help-close")?.addEventListener("click", ()=> d.close());
-}
-async function githubLoginInline(){
-  const token=prompt("Collez votre token GitHub (scope: repo, contenu)");
-  if(!token) return;
-  localStorage.setItem("ghtoken", token); GHTOKEN=token;
-  alert("Connecté à GitHub ✅");
-  try{ await saveToGitHubMerged(ARTICLES,"commit auto après connexion"); alert("Modifications locales enregistrées."); }catch(e){ console.warn(e); }
-}
-function githubLogout(){ localStorage.removeItem("ghtoken"); GHTOKEN=""; render(); alert("Déconnecté."); }
-function bindAuth(){
-  document.getElementById("login-btn")?.addEventListener("click", githubLoginInline);
-  document.getElementById("logout-btn")?.addEventListener("click", githubLogout);
-}
-
-/* Éditeur de listes (Auteurs/Villes/Thèmes) avec Renommer */
-function bindListsEditor(){
-  const btn=document.getElementById("lists-btn");
-  const dlg=document.getElementById("lists-modal");
-  if(!btn || !dlg) return;
-
-  const tabs=dlg.querySelectorAll(".tab");
-  const itemsUL=dlg.querySelector("#list-items");
-  const input=dlg.querySelector("#list-input");
-  const addBtn=dlg.querySelector("#list-add");
-  const sortBtn=dlg.querySelector("#list-sort");
-  const dedupeBtn=dlg.querySelector("#list-dedupe");
-  const importBtn=dlg.querySelector("#list-import");
-  const fileInp=dlg.querySelector("#list-file");
-  const exportBtn=dlg.querySelector("#list-export");
-  const saveBtn=dlg.querySelector("#list-save");
-  const closeBtn=dlg.querySelector("#list-close");
-  const countSpan=dlg.querySelector("#list-count");
-
-  let KIND="auteurs";
-  let WORK=[];
-
-  const headerOf=k=> (k==="auteurs"?"Auteur":k==="villes"?"Ville":"Theme");
-  const apiOf   =k=> (k==="auteurs"?API_AUT  :k==="villes"?API_VIL :API_THE);
-
-  function escapeHTML(s){ return (s??"").toString().replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
-
-  function refresh(){
-    countSpan.textContent=`${WORK.length} élément(s)`;
-    itemsUL.innerHTML = WORK.map((val,idx)=>`
-      <li data-i="${idx}">
-        <span class="val">${escapeHTML(val)}</span>
-        <div>
-          <button class="edit" data-i="${idx}" aria-label="Renommer">✎</button>
-          <button class="del"  data-i="${idx}" aria-label="Supprimer">✖</button>
-        </div>
-      </li>`
-    ).join("");
-  }
-  function setKind(k){
-    KIND=k;
-    tabs.forEach(t=>t.classList.toggle("active", t.dataset.kind===KIND));
-    WORK=Array.from(LISTS[KIND]||[]);
-    refresh();
-  }
-  function renameAt(i){
-    const oldVal=WORK[i];
-    const nv=prompt("Modifier l’élément :", oldVal);
-    if(nv==null) return;
-    const v=nv.trim(); if(!v) return;
-    const exists=WORK.some((x,j)=> j!==i && x.toLowerCase()===v.toLowerCase());
-    if(exists){ alert("Cet élément existe déjà dans la liste."); return; }
-    WORK[i]=v; refresh();
-  }
-
-  btn.addEventListener("click", ()=>{ setKind("auteurs"); dlg.showModal(); input.focus(); });
-  closeBtn.addEventListener("click", ()=> dlg.close());
-  tabs.forEach(t=> t.addEventListener("click", ()=> setKind(t.dataset.kind)));
-
-  addBtn.addEventListener("click", ()=>{
-    const v=(input.value||"").trim(); if(!v) return;
-    if(!WORK.some(x=>x.toLowerCase()===v.toLowerCase())) WORK.push(v);
-    input.value=""; refresh();
-  });
-  input.addEventListener("keydown",(e)=>{ if(e.key==="Enter"){ e.preventDefault(); addBtn.click(); } });
-
-  itemsUL.addEventListener("click",(e)=>{
-    const ed=e.target.closest(".edit"); if(ed){ renameAt(+ed.dataset.i); return; }
-    const del=e.target.closest(".del"); if(del){ const i=+del.dataset.i; WORK.splice(i,1); refresh(); }
-  });
-  itemsUL.addEventListener("dblclick",(e)=>{
-    const li=e.target.closest("li[data-i]"); if(!li) return; renameAt(+li.dataset.i);
-  });
-
-  sortBtn.addEventListener("click", ()=>{ WORK.sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"})); refresh(); });
-  dedupeBtn.addEventListener("click", ()=>{
-    const seen=new Set(); const out=[]; for(const v of WORK){ const k=v.toLowerCase(); if(!seen.has(k)){ seen.add(k); out.push(v); } }
-    WORK=out; refresh();
-  });
-
-  importBtn.addEventListener("click", ()=> fileInp.click());
-  fileInp.addEventListener("change", async ()=>{
-    const f=fileInp.files?.[0]; if(!f) return;
-    const txt=await f.text(); const list=parseOneColCSV(txt);
-    WORK=Array.from(new Set([...WORK, ...list])).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
-    fileInp.value=""; refresh();
-  });
-
-  exportBtn.addEventListener("click", ()=>{
-    const csv=listToCSV(WORK, headerOf(KIND));
-    const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
-    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`${KIND}.csv`; a.click(); URL.revokeObjectURL(a.href);
-  });
-
-  saveBtn.addEventListener("click", async ()=>{
-    LISTS[KIND]=Array.from(WORK);
-    buildCanonFromLists();
-    populateDatalists();
-    try{
-      const ok=await saveListToGitHub(apiOf(KIND), `data/${KIND}.csv`, WORK, headerOf(KIND));
-      if(ok) alert("Liste enregistrée sur GitHub ✅");
-    }catch(e){ console.error(e); alert("Échec d'enregistrement GitHub"); }
-  });
-}
-
-/* Init */
-async function init(){
-  showLoading(true);
-  try{ ARTICLES      = await fetchCSVArticles(); }catch(e){ console.error(e); ARTICLES=[]; }
-  try{ LISTS.auteurs = await fetchCSVList(RAW_AUT, AUTHORS_PATH); }catch{ LISTS.auteurs=[]; }
-  try{ LISTS.villes  = await fetchCSVList(RAW_VIL, CITIES_PATH); }catch{ LISTS.villes=[]; }
-  try{ LISTS.themes  = await fetchCSVList(RAW_THE, THEMES_PATH); }catch{ LISTS.themes=[]; }
-  if(LISTS.auteurs.length || LISTS.villes.length) buildCanonFromLists(); else buildCanonFromArticles();
-  populateDatalists();
-
-  const years=uniqSorted(ARTICLES.map(r=>r["Année"]).filter(Boolean));
-  const fy=document.getElementById("filter-annee");
-  if(fy) fy.innerHTML = '<option value="">(toutes)</option>' + years.map(y=>`<option value="${y}">${y}</option>`).join("");
-  refreshNumeroOptions();
-
-  bindFilters(); bindSorting(); bindPager(); bindExports(); bindHelp(); bindAuth(); bindListsEditor();
-  render();
-  showLoading(false);
-}
-if(document.readyState==="loading"){ document.addEventListener("DOMContentLoaded", init); } else { init(); }
+  const pages=Math.max(1, Math.ceil
