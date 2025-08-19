@@ -311,16 +311,18 @@ function titleSimilarity(a,b){
   const lenBonus=Math.min(ta.length,tb.length)/Math.max(ta.length,tb.length);
   return 0.7*jacc + 0.3*lenBonus;
 }
-function findSimilarTitle(row, excludeIndex=-1){
-  let best={idx:-1, score:0}; const tNew=row["Titre"]||"";
-  (ARTICLES||[]).forEach((r,i)=>{
-    if(i===excludeIndex) return;
-    let s=titleSimilarity(tNew, r["Titre"]||"");
-    if(row["Année"] && r["Année"]===row["Année"]) s+=0.05;
-    if(row["Numéro"] && (""+row["Numéro"]).trim()===((""+(r["Numéro"]||"")).trim())) s+=0.05;
-    if(s>best.score) best={idx=i, score:s};
+function findSimilarTitle(row, excludeIndex = -1){
+  let best = { idx: -1, score: 0 };
+  const tNew = row["Titre"] || "";
+  (ARTICLES || []).forEach((r, i) => {
+    if (i === excludeIndex) return;
+    let s = titleSimilarity(tNew, r["Titre"] || "");
+    if (row["Année"] && r["Année"] === row["Année"]) s += 0.05;
+    if (row["Numéro"] && ("" + row["Numéro"]).trim() === ("" + (r["Numéro"] || "")).trim()) s += 0.05;
+    if (s > best.score) best = { idx: i, score: s }; // ← ici, ":" et non "="
   });
   return best;
+
 }
 function checkDuplicateBeforeAdd(row){
   const best=findSimilarTitle(row, -1);
