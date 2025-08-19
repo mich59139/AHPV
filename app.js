@@ -2,6 +2,7 @@
 // Ajouts : Époques (datalist + filtre) • "Nouveau numéro…" en premier + pré-rempli "Mémoire n°"
 //          Anti-cache sur fetch • Datalists mises à jour en direct depuis “Listes”
 //          Sauvegarde fluide : commit GitHub regroupé (file d’attente) + badge d’état
+//          FIX suppression/modif : on utilise l’index source (_i) même avec filtre/tri/pagination
 
 /* Config */
 const GITHUB_USER   = "mich59139";
@@ -303,7 +304,7 @@ function titleSimilarity(a,b){
   const union=setA.size+setB.size-inter;
   const jacc=inter/union;
   const lenBonus=Math.min(ta.length,tb.length)/Math.max(ta.length,tb.length);
-  return 0.7*jacc + 0.3*lenBonus; // (corrigé d’un 0.7+…)
+  return 0.7*jacc + 0.3*lenBonus;
 }
 function findSimilarTitle(row, excludeIndex=-1){
   let best={idx:-1, score:0}; const tNew=row["Titre"]||"";
@@ -312,7 +313,7 @@ function findSimilarTitle(row, excludeIndex=-1){
     let s=titleSimilarity(tNew, r["Titre"]||"");
     if(row["Année"] && r["Année"]===row["Année"]) s+=0.05;
     if(row["Numéro"] && (""+row["Numéro"]).trim()===((""+(r["Numéro"]||"")).trim())) s+=0.05;
-    if(s>best.score) best={idx:i, score:s};
+    if(s>best.score) best={idx=i, score:s};
   });
   return best;
 }
@@ -330,11 +331,13 @@ function checkDuplicateBeforeAdd(row){
 
 /* UI helpers */
 function showLoading(b){ document.getElementById("loading")?.classList.toggle("hidden", !b); }
+
+/* IMPORTANT: on renvoie les lignes + l’index source _i */
 function applyFilters(){
-  let rows=ARTICLES.slice();
-  if(FILTER_YEAR) rows=rows.filter(r=>(r["Année"]||"")===FILTER_YEAR);
-  if(FILTER_NUM)  rows=rows.filter(r=>((""+(r["Numéro"]||"")).trim()===((""+FILTER_NUM).trim())));
-  if(FILTER_EPOQUE) rows=rows.filter(r=>(r["Epoque"]||"")===FILTER_EPOQUE);
+  let rows = ARTICLES.map((r, idx) => ({ ...r, _i: idx }));
+  if(FILTER_YEAR)   rows = rows.filter(r=>(r["Année"]||"")===FILTER_YEAR);
+  if(FILTER_NUM)    rows = rows.filter(r=>((""+(r["Numéro"]||"")).trim()===((""+FILTER_NUM).trim())));
+  if(FILTER_EPOQUE) rows = rows.filter(r=>(r["Epoque"]||"")===FILTER_EPOQUE);
   if(QUERY){
     const q=QUERY.toLowerCase();
     rows=rows.filter(r=>Object.values(r).some(v=>(v??"").toString().toLowerCase().includes(q)));
@@ -345,6 +348,7 @@ function applyFilters(){
   }
   return rows;
 }
+
 function render(){
   const rows=applyFilters();
   const total=rows.length;
@@ -352,8 +356,8 @@ function render(){
   const page=rows.slice(start, start+pageSize);
 
   const tbody=document.getElementById("tbody");
-  tbody.innerHTML=page.map((r,iOnPage)=>{
-    const i=start+iOnPage;
+  tbody.innerHTML=page.map((r)=>{
+    const i=r._i; // index réel dans ARTICLES
     if(editingIndex!==i){
       return `
       <tr class="row" ondblclick="window._inlineEdit?.(${i})" onclick="window._editRow?.(${i})">
@@ -398,6 +402,9 @@ function render(){
   document.getElementById("pageinfo").textContent = `${Math.min(currentPage,pages)} / ${pages} — ${total} ligne(s)`;
   document.getElementById("prev").disabled = currentPage<=1;
   document.getElementById("next").disabled = currentPage>=pages;
+
+  // Si on a supprimé la dernière ligne de la dernière page, on recale et on rerender
+  if (currentPage > pages){ currentPage = pages; return render(); }
 
   const sc=document.getElementById("status-count"); if(sc) sc.textContent=`Fichier: ✅ (${ARTICLES.length})`;
   const sa=document.getElementById("status-auth");  if(sa) sa.textContent= GHTOKEN ? "🔐 Connecté" : "🔓 Invité";
@@ -576,7 +583,7 @@ function bindSorting(){
 }
 function bindPager(){
   document.getElementById("prev")?.addEventListener("click", ()=>{ if(currentPage>1){ currentPage--; render(); } });
-  document.getElementById("next")?.addEventListener("click", ()=>{ currentPage++; render(); });
+  document.getElementById("next")?.addEventListener("click", ()=>{ currentPage++; render(); } });
 }
 
 /* Exports */
