@@ -93,7 +93,7 @@
         <h3>Ajouter un article</h3>
         <div class="grid">
           <label>Année
-            <input id="a-annee" required />
+            <input id="a-annee" inputmode="numeric" pattern="[0-9]*" required />
           </label>
 
           <label>Numéro
@@ -101,7 +101,12 @@
             <select id="a-numero" required>
               <option value="">(choisir)</option>
             </select>
-            <input id="a-numero-new" class="hidden" placeholder="Saisir un nouveau numéro" />
+
+            <!-- wrapper qui montre "Mémoire n°" + champ -->
+            <div id="a-numero-new-wrap" class="hidden numero-wrap">
+              <span class="prefix">Mémoire n°</span>
+              <input id="a-numero-new" inputmode="numeric" pattern="[0-9]*" placeholder="ex : 68" />
+            </div>
           </label>
 
           <label>Titre
@@ -125,7 +130,7 @@
           </label>
 
           <label>Époque
-            <input id="a-epoque" />
+            <input id="a-epoque" list="dl-epoques" />
           </label>
         </div>
         <menu>
@@ -187,6 +192,7 @@
     <datalist id="dl-auteurs"></datalist>
     <datalist id="dl-villes"></datalist>
     <datalist id="dl-themes"></datalist>
+    <datalist id="dl-epoques"></datalist>
   </div>
 
   <script src="app.js" defer></script>
