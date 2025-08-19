@@ -1,14 +1,15 @@
 // AHPV — Catalogue + mini-éditeur des listes + exports "Tout"
-// Ajouts : Époques (datalist + filtre) • "Nouveau numéro…" en premier + pré-rempli "Mémoire n°"
+// Ajouts : Époques (datalist + filtre) • "Nouveau numéro…" + pré-rempli "Mémoire n°"
 //          Anti-cache sur fetch • Datalists mises à jour en direct depuis “Listes”
-//          Sauvegarde fluide : commit GitHub regroupé (file d’attente) + badge d’état
+//          Sauvegarde fluide (file d’attente) + badge d’état
 //          FIX suppression/modif : on utilise l’index source (_i) même avec filtre/tri/pagination
+//          fetchCSVArticles() affiche un diagnostic si le CSV est introuvable
 
-/* Config */
+/* ==== Config à adapter si besoin ==== */
 const GITHUB_USER   = "mich59139";
 const GITHUB_REPO   = "AHPV";
-const GITHUB_BRANCH = "main";
-const CSV_PATH      = "data/articles.csv";
+const GITHUB_BRANCH = "main";                 // ← mets "gh-pages" si besoin
+const CSV_PATH      = "data/articles.csv";    // ← nom EXACT du fichier CSV
 const AUTHORS_PATH  = "data/auteurs.csv";
 const CITIES_PATH   = "data/villes.csv";
 const THEMES_PATH   = "data/themes.csv";
@@ -45,7 +46,7 @@ let GHTOKEN = localStorage.getItem("ghtoken") || "";
 let LISTS   = { auteurs:[], villes:[], themes:[], epoques:[] };
 let CANON   = { auteurs:new Map(), villes:new Map() };
 
-/* --- Sauvegarde fluide (file d’attente + badge + toast) --- */
+/* ==== Sauvegarde fluide (file d’attente + badge + toast) ==== */
 let SAVE_Q = { timer:null, running:false, pending:null };
 let SAVE_BADGE = null;
 let AUTO_SAVE_SILENT=false;
@@ -122,7 +123,7 @@ async function runQueuedSave(){
   }
 }
 
-/* CSV parsing */
+/* ==== CSV parsing ==== */
 function parseCSV(text){
   text=(text||"").replace(/^\uFEFF/,"");
   const first = text.split(/\r?\n/,1)[0]||"";
@@ -178,7 +179,7 @@ function toTSV(rows){
 }
 function listToCSV(items, header){ return [header, ...items].join("\n")+"\n"; }
 
-/* Fetch */
+/* ==== Fetch ==== */
 async function fetchText(url){ const r=await fetch(withNoCache(url), {cache:"no-store"}); if(!r.ok) throw new Error("fetch "+url+" -> "+r.status); return r.text(); }
 async function fetchCSVArticles(){
   const tries=[RAW_ART, CSV_PATH, API_ART+"#api"];
@@ -186,15 +187,19 @@ async function fetchCSVArticles(){
     try{
       if(u.endsWith("#api")){
         const res=await fetch(withNoCache(API_ART), {cache:"no-store"});
-        if(!res.ok) throw new Error("api "+res.status);
+        if(!res.ok) throw new Error("API " + res.status);
         const j=await res.json();
         const content=atob((j.content||"").replace(/\n/g,""));
         return parseCSV(content);
       }else{
         const t=await fetchText(u); return parseCSV(t);
       }
-    }catch(e){}
+    }catch(e){
+      console.warn("Échec lecture", u, e);
+    }
   }
+  const sc = document.getElementById("status-count");
+  if (sc) sc.textContent = "Fichier : ⚠️ introuvable (vérifie CSV_PATH / branche)";
   return [];
 }
 async function fetchCSVList(rawUrl, relPath){
@@ -216,7 +221,7 @@ async function fetchCSVList(rawUrl, relPath){
   return [];
 }
 
-/* GitHub save (utilisé par lists + login auto-commit) */
+/* ==== GitHub save helpers ==== */
 async function getShaFor(apiUrl){
   const r=await fetch(apiUrl,{headers:{Authorization:`token ${GHTOKEN}`}});
   if(!r.ok) throw new Error("SHA introuvable "+apiUrl);
@@ -240,7 +245,7 @@ async function saveListToGitHub(apiUrl, pathLabel, items, header){
   return true;
 }
 
-/* Canon/suggestions */
+/* ==== Canon/suggestions ==== */
 function buildCanonFromLists(){
   CANON.auteurs=new Map(LISTS.auteurs.map(x=>[deburr(x),x]));
   CANON.villes =new Map(LISTS.villes.map(x =>[deburr(x),x]));
@@ -294,7 +299,7 @@ function normaliseRowFields(row){
   };
 }
 
-/* Doublons (simple) */
+/* ==== Doublons (simple) ==== */
 function titleSimilarity(a,b){
   const ta=deburr(a).split(/\s+/).filter(Boolean);
   const tb=deburr(b).split(/\s+/).filter(Boolean);
@@ -329,7 +334,7 @@ function checkDuplicateBeforeAdd(row){
   return true;
 }
 
-/* UI helpers */
+/* ==== UI helpers ==== */
 function showLoading(b){ document.getElementById("loading")?.classList.toggle("hidden", !b); }
 
 /* IMPORTANT: on renvoie les lignes + l’index source _i */
@@ -403,14 +408,13 @@ function render(){
   document.getElementById("prev").disabled = currentPage<=1;
   document.getElementById("next").disabled = currentPage>=pages;
 
-  // Si on a supprimé la dernière ligne de la dernière page, on recale et on rerender
   if (currentPage > pages){ currentPage = pages; return render(); }
 
   const sc=document.getElementById("status-count"); if(sc) sc.textContent=`Fichier: ✅ (${ARTICLES.length})`;
   const sa=document.getElementById("status-auth");  if(sa) sa.textContent= GHTOKEN ? "🔐 Connecté" : "🔓 Invité";
 }
 
-/* Inline edit */
+/* ==== Inline edit ==== */
 window._editRow=(idx)=>{ try{ if(matchMedia("(max-width:800px)").matches) _inlineEdit(idx); }catch{ _inlineEdit(idx); } };
 window._inlineEdit=(idx)=>{
   editingIndex=idx; render();
@@ -437,7 +441,7 @@ window._inlineSave=async ()=>{
   enqueueSave("Édition ligne");
 };
 
-/* Ajout / Suppression */
+/* ==== Ajout / Suppression ==== */
 function getNumbersForYear(year){
   let nums=ARTICLES
     .filter(r=>!year || (r["Année"]||"")==year)
@@ -525,7 +529,7 @@ window._deleteRow=async (idx)=>{
   enqueueSave("Suppression");
 };
 
-/* Filtres / tri / pagination */
+/* ==== Filtres / tri / pagination ==== */
 function refreshNumeroOptions(){
   const fy=document.getElementById("filter-annee");
   const fn=document.getElementById("filter-numero");
@@ -583,10 +587,10 @@ function bindSorting(){
 }
 function bindPager(){
   document.getElementById("prev")?.addEventListener("click", ()=>{ if(currentPage>1){ currentPage--; render(); } });
-  document.getElementById("next")?.addEventListener("click", ()=>{ currentPage++; render(); } });
+  document.getElementById("next")?.addEventListener("click", ()=>{ currentPage++; render(); });
 }
 
-/* Exports */
+/* ==== Exports ==== */
 async function ensureXLSX(){ if(window.XLSX) return; await new Promise((res,rej)=>{ const s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
 function download(name, text, mime="text/csv;charset=utf-8"){
   const blob=new Blob([text],{type:mime}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href);
@@ -618,7 +622,7 @@ function bindExports(){
   });
 }
 
-/* Aide & Auth */
+/* ==== Aide & Auth ==== */
 function bindHelp(){
   const d=document.getElementById("help-modal");
   document.getElementById("help-btn")?.addEventListener("click", ()=> d.showModal());
@@ -637,7 +641,7 @@ function bindAuth(){
   document.getElementById("logout-btn")?.addEventListener("click", githubLogout);
 }
 
-/* List editor (Auteurs/Villes/Thèmes/Époques) avec Renommer + rafraîchissement immédiat */
+/* ==== List editor (Auteurs/Villes/Thèmes/Époques) ==== */
 function bindListsEditor(){
   const btn=document.getElementById("lists-btn");
   const dlg=document.getElementById("lists-modal");
@@ -664,7 +668,6 @@ function bindListsEditor(){
 
   function escapeHTML(s){ return (s??"").toString().replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
 
-  // Rafraîchit immédiatement les suggestions UI quand on édite la liste courante
   function previewListsToUI(){
     LISTS[KIND] = Array.from(WORK);
     buildCanonFromLists();
@@ -748,7 +751,7 @@ function bindListsEditor(){
   });
 }
 
-/* Init */
+/* ==== Init ==== */
 async function init(){
   try{
     showLoading(true);
