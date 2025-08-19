@@ -143,3 +143,32 @@ button.del{ color:#fff; background:var(--danger); border-color:var(--danger); }
   /* scroll horizontal si nécessaire */
   .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
+
+/* Limiter le flex aux rangées de panneaux, pas aux <tr> */
+.panel .row{ display:flex; gap:14px; flex-wrap:wrap; }   /* <- ton ancien .row */
+tr.row{ display:table-row !important; }                  /* <- protège le tableau */
+
+/* Forcer la LISTE (table) quoi qu'il arrive */
+.table-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.table{ display:table !important; width:100% !important; table-layout:auto !important; }
+.table thead{ display:table-header-group !important; }
+.table tbody{ display:table-row-group !important; }
+.table tr{ display:table-row !important; margin:0 !important; border:0 !important; }
+.table th,
+.table td{ display:table-cell !important; padding:8px 10px !important; font-size:14px !important; line-height:1.35 !important; text-align:left !important; }
+.table td::before{ content:none !important; display:none !important; }
+
+/* Au cas où un ancien CSS cachait le thead en mobile */
+@media (max-width:2000px){
+  .table thead{ display:table-header-group !important; }
+}
+
+/* Nettoyage des contrôles natifs visibles dans les cellules (Safari etc.) */
+.table tbody tr:not(.editing) input,
+.table tbody tr:not(.editing) select{
+  appearance:none !important; -webkit-appearance:none !important;
+  border:0 !important; background:transparent !important; padding:0 !important; margin:0 !important;
+  pointer-events:none !important; color:inherit !important;
+}
+.table tbody tr:not(.editing) input[type="checkbox"],
+.table tbody tr:not(.editing) input[type="radio"]{ display:none !important; }
