@@ -1,33 +1,34 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>AHPV – Catalogue des Articles</title>
-  <link rel="icon" href="assets/favicon.png" type="image/png">
-  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="assets/favicon.png" type="image/png" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="shell">
-    <div class="brand">
+    <header class="brand">
       <a id="brand-link" href="https://www.amisdelhistoiredupaysvizillois.fr/" target="_blank" rel="noopener">
-        <img src="assets/logo-ahpv.png" alt="AHPV" class="brand-logo">
+        <img src="assets/logo-ahpv.png" alt="AHPV" class="brand-logo" />
       </a>
-      <div>
-        <div style="font-weight:700">Amis de l’Histoire du Pays Vizillois</div>
-        <h1 style="font-size:1.25rem;margin:2px 0 0">Catalogue des Articles</h1>
+      <div class="brand-text">
+        <div class="brand-line">Amis de l’Histoire du Pays Vizillois</div>
+        <h1>Catalogue des Articles</h1>
       </div>
-    </div>
+    </header>
 
-    <div class="badges panel">
-      <span id="status-count">Fichier: —</span>
+    <section class="panel badges">
+      <span id="status-count">Fichier : —</span>
       <span id="status-auth">🔓 Invité</span>
-      <button id="login-btn">🔐 Connexion</button>
-      <button id="logout-btn">🚪 Déconnexion</button>
-      <button id="help-btn">❓ Aide</button>
-    </div>
+      <span class="grow"></span>
+      <button id="login-btn" class="btn">🔐 Connexion</button>
+      <button id="logout-btn" class="btn">🚪 Déconnexion</button>
+      <button id="help-btn" class="btn">❓ Aide</button>
+    </section>
 
-    <div class="filters panel">
+    <section class="panel filters">
       <label>Année
         <select id="filter-annee" aria-label="Filtrer par année">
           <option value="">(toutes)</option>
@@ -38,26 +39,26 @@
           <option value="">(tous)</option>
         </select>
       </label>
-      <label>Recherche
-        <input id="search" type="text" placeholder="titre, auteur, ville, thème…" aria-label="Recherche">
+      <label class="grow">Recherche
+        <input id="search" type="text" placeholder="titre, auteur, ville, thème…" aria-label="Recherche" />
       </label>
-      <button onclick="resetAllFilters()">↺ Réinitialiser</button>
-    </div>
+      <button class="btn" onclick="resetAllFilters()">↺ Réinitialiser</button>
+    </section>
 
-    <div class="controls panel">
-      <button onclick="window._openAddModal?.()">➕ Ajouter un article</button>
-      <button id="lists-btn">🧾 Listes</button>
-    </div>
+    <section class="panel controls">
+      <button class="btn primary" onclick="window._openAddModal?.()">➕ Ajouter un article</button>
+      <button class="btn" id="lists-btn">🧾 Listes</button>
+    </section>
 
-    <div class="exports panel">
-      <button id="export-copy">📋 Copier</button>
-      <button id="export-csv">⬇️ CSV</button>
-      <button id="export-xlsx">⬇️ Excel</button>
-      <button id="export-print">🖨️ Imprimer</button>
+    <section class="panel exports">
+      <button class="btn" id="export-copy">📋 Copier</button>
+      <button class="btn" id="export-csv">⬇️ CSV</button>
+      <button class="btn" id="export-xlsx">⬇️ Excel</button>
+      <button class="btn" id="export-print">🖨️ Imprimer</button>
       <span class="sep"></span>
-      <button id="export-csv-all">⬇️ CSV (Tout)</button>
-      <button id="export-xlsx-all">⬇️ Excel (Tout)</button>
-    </div>
+      <button class="btn" id="export-csv-all">⬇️ CSV (Tout)</button>
+      <button class="btn" id="export-xlsx-all">⬇️ Excel (Tout)</button>
+    </section>
 
     <div class="table-wrap">
       <table class="responsive" aria-describedby="pageinfo">
@@ -78,60 +79,81 @@
       </table>
     </div>
 
-    <div class="pager panel">
-      <button id="prev">◀</button>
+    <section class="panel pager">
+      <button class="btn" id="prev">◀</button>
       <span id="pageinfo" aria-live="polite">—</span>
-      <button id="next">▶</button>
-    </div>
+      <button class="btn" id="next">▶</button>
+    </section>
 
     <div id="loading" class="loading hidden" role="status" aria-live="assertive">Chargement…</div>
 
-    <!-- Modal: Ajouter un article -->
+    <!-- Modal : Ajout -->
     <dialog id="add-modal" class="modal">
       <form method="dialog" id="add-form">
         <h3>Ajouter un article</h3>
         <div class="grid">
-          <label>Année <input id="a-annee" required></label>
+          <label>Année
+            <input id="a-annee" required />
+          </label>
+
           <label>Numéro
+            <!-- "Nouveau numéro…" est injecté EN PREMIER par app.js -->
             <select id="a-numero" required>
               <option value="">(choisir)</option>
-              <!-- options injectées par app.js -->
-              <option value="__NEW__">— Nouveau numéro… —</option>
             </select>
-            <input id="a-numero-new" class="hidden" placeholder="Saisir un nouveau numéro">
+            <input id="a-numero-new" class="hidden" placeholder="Saisir un nouveau numéro" />
           </label>
-          <label>Titre <input id="a-titre" required></label>
-          <label>Page(s) <input id="a-pages"></label>
-          <label>Auteur(s) <input id="a-auteurs" list="dl-auteurs"></label>
-          <label>Ville(s)  <input id="a-villes"  list="dl-villes"></label>
-          <label>Thème(s)  <input id="a-themes"  list="dl-themes"></label>
-          <label>Époque <input id="a-epoque"></label>
+
+          <label>Titre
+            <input id="a-titre" required />
+          </label>
+
+          <label>Page(s)
+            <input id="a-pages" />
+          </label>
+
+          <label>Auteur(s)
+            <input id="a-auteurs" list="dl-auteurs" />
+          </label>
+
+          <label>Ville(s)
+            <input id="a-villes" list="dl-villes" />
+          </label>
+
+          <label>Thème(s)
+            <input id="a-themes" list="dl-themes" />
+          </label>
+
+          <label>Époque
+            <input id="a-epoque" />
+          </label>
         </div>
         <menu>
-          <button type="button" id="add-cancel">Annuler</button>
-          <button type="submit" id="add-submit">Ajouter</button>
+          <button type="button" class="btn" id="add-cancel">Annuler</button>
+          <button type="submit" class="btn primary" id="add-submit">Ajouter</button>
         </menu>
       </form>
     </dialog>
 
-    <!-- Modal: Aide -->
+    <!-- Modal : Aide -->
     <dialog id="help-modal" class="modal">
       <div class="help-panel">
         <h3>Aide</h3>
         <div class="help-body">
           <h4>Listes séparées</h4>
           <ul>
-            <li>Suggestions depuis <code>data/auteurs.csv</code>, <code>data/villes.csv</code>, <code>data/themes.csv</code>. À défaut, reconstruites automatiquement.</li>
+            <li>Suggestions depuis <code>data/auteurs.csv</code>, <code>data/villes.csv</code>, <code>data/themes.csv</code>.</li>
           </ul>
           <h4>Exports</h4>
           <ul>
-            <li>Filtré : Copier, CSV, Excel, Imprimer. — Tout : CSV/Excel (ignore les filtres).</li>
+            <li>Filtré : Copier, CSV, Excel, Imprimer — Tout : CSV/Excel (ignore les filtres).</li>
           </ul>
         </div>
-        <menu><button id="help-close">Fermer</button></menu>
+        <menu><button id="help-close" class="btn">Fermer</button></menu>
       </div>
     </dialog>
 
+    <!-- Modal : Listes -->
     <dialog id="lists-modal" class="modal">
       <div class="lists">
         <h3>Listes de référence</h3>
@@ -141,21 +163,23 @@
           <button data-kind="themes"  class="tab">Thèmes</button>
           <span id="list-count" class="count"></span>
         </nav>
+
         <div class="editor">
           <div class="toolbar">
-            <input id="list-input" type="text" placeholder="Ajouter un élément…">
-            <button id="list-add">Ajouter</button>
-            <button id="list-sort">Trier A → Z</button>
-            <button id="list-dedupe">Dédupliquer</button>
-            <button id="list-import">Importer CSV</button>
-            <input id="list-file" type="file" accept=".csv,.txt" hidden>
-            <button id="list-export">Exporter CSV</button>
+            <input id="list-input" type="text" placeholder="Ajouter un élément…" />
+            <button id="list-add" class="btn">Ajouter</button>
+            <button id="list-sort" class="btn">Trier A → Z</button>
+            <button id="list-dedupe" class="btn">Dédupliquer</button>
+            <button id="list-import" class="btn">Importer CSV</button>
+            <input id="list-file" type="file" accept=".csv,.txt" hidden />
+            <button id="list-export" class="btn">Exporter CSV</button>
           </div>
           <ul id="list-items" class="items" aria-live="polite"></ul>
         </div>
+
         <menu>
-          <button id="list-save" class="primary">💾 Enregistrer</button>
-          <button id="list-close">Fermer</button>
+          <button id="list-save" class="btn primary">💾 Enregistrer</button>
+          <button id="list-close" class="btn">Fermer</button>
         </menu>
       </div>
     </dialog>
