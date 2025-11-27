@@ -1,0 +1,53 @@
+================================================================================
+    BOUTON "VUE CARTE" AJOUTÉ AU CATALOGUE
+================================================================================
+
+✅ AJOUT EFFECTUÉ
+
+Un bouton "🗺️ Vue carte" a été ajouté dans le header du catalogue (index.html).
+
+Position : En haut à droite, après le bouton "❓ Aide"
+
+Style : Bouton vert (couleur accent) avec l'icône 🗺️
+
+================================================================================
+📥 FICHIER À TÉLÉCHARGER
+================================================================================
+
+⭐ index.html (NOUVEAU)
+
+================================================================================
+🔄 INSTALLATION
+================================================================================
+
+1. Téléchargez index.html ci-dessus
+
+2. Remplacez le fichier dans ~/Downloads/"files 3"/
+
+3. Si le serveur tourne, pas besoin de le relancer
+
+4. Rechargez simplement la page du catalogue :
+   http://localhost:8000/index.html
+   (Faites Cmd + R)
+
+================================================================================
+🎯 RÉSULTAT
+================================================================================
+
+Dans le header du catalogue, vous verrez maintenant :
+
+[🔐 Connexion] [❓ Aide] [🗺️ Vue carte]
+
+Cliquez sur "🗺️ Vue carte" → Vous accédez à carte.html
+
+================================================================================
+🔗 NAVIGATION COMPLÈTE
+================================================================================
+
+Catalogue → Carte :
+   Bouton "🗺️ Vue carte" en haut à droite
+
+Carte → Catalogue :
+   Bouton "📋 Retour au catalogue" en haut à droite
+
+================================================================================

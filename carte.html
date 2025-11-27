@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+  
+  <title>AHPV – Carte Interactive des Articles v1.7</title>
+  <meta name="description" content="Carte interactive des articles de la revue Mémoire - AHPV" />
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  
+  <!-- Icône et styles -->
+  <link rel="icon" href="assets/favicon.png" />
+  <link rel="stylesheet" href="carte.css?v=1.7" />
+</head>
+<body>
+  <!-- Header -->
+  <header class="site-header">
+    <div class="wrap">
+      <div class="brand">
+        <img src="assets/logo-ahpv.png" alt="AHPV" />
+        <div class="title">
+          <h1>Carte Interactive des Articles</h1>
+          <p class="subtitle">Revue Mémoire – AHPV</p>
+        </div>
+      </div>
+      <div class="nav-buttons">
+        <a href="index.html" class="btn ghost">📋 Retour au catalogue</a>
+        <button id="btnHelp" class="btn ghost">❓ Aide</button>
+        <button id="btnStats" class="btn ghost">📊 Statistiques</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sidebar filtres -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h2>Filtres</h2>
+      <button class="btn-close" id="closeSidebar">×</button>
+    </div>
+    
+    <div class="sidebar-content">
+      <!-- Message d'accueil -->
+      <div class="welcome-message">
+        <p><strong>👋 Bienvenue !</strong></p>
+        <p style="font-size: 13px; margin-top: 8px;">
+          Choisissez un mode de filtrage ci-dessous. Les filtres s'appliquent automatiquement !
+        </p>
+      </div>
+      
+      <!-- Recherche -->
+      <div class="filter-group">
+        <h3 class="filter-title">Recherche</h3>
+        <input type="search" id="searchInput" placeholder="Titre, auteur, mots-clés..." class="search-input">
+      </div>
+
+      <!-- Choix du mode de filtrage -->
+      <div class="filter-group">
+        <h3 class="filter-title">Mode de filtrage</h3>
+        <div class="filter-mode-options">
+          <label class="radio-option">
+            <input type="radio" name="filterMode" value="none" checked />
+            <span>📍 Toutes les villes</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="filterMode" value="ville" />
+            <span>🏙️ Par ville</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="filterMode" value="theme" />
+            <span>🏷️ Par thème</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="filterMode" value="epoque" />
+            <span>📅 Par époque</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Filtre Villes (caché par défaut) -->
+      <div class="filter-group filter-content" id="villesFilterGroup" style="display: none;">
+        <div class="filter-header">
+          <h3 class="filter-title">Sélectionnez les villes</h3>
+          <div class="filter-toggle-buttons">
+            <button class="btn-mini" id="checkAllVilles">Tout</button>
+            <button class="btn-mini" id="uncheckAllVilles">Aucun</button>
+          </div>
+        </div>
+        <select id="villesFilters" class="filter-select" multiple size="12">
+          <!-- Généré dynamiquement -->
+        </select>
+        <p class="filter-hint">Maintenez Cmd/Ctrl pour sélectionner plusieurs villes</p>
+      </div>
+
+      <!-- Filtre Thèmes (caché par défaut) -->
+      <div class="filter-group filter-content" id="themesFilterGroup" style="display: none;">
+        <div class="filter-header">
+          <h3 class="filter-title">Sélectionnez les thèmes</h3>
+          <div class="filter-toggle-buttons">
+            <button class="btn-mini" id="checkAllThemes">Tout</button>
+            <button class="btn-mini" id="uncheckAllThemes">Aucun</button>
+          </div>
+        </div>
+        <select id="themesFilters" class="filter-select" multiple size="12">
+          <!-- Généré dynamiquement -->
+        </select>
+        <p class="filter-hint">Maintenez Cmd/Ctrl pour sélectionner plusieurs thèmes</p>
+      </div>
+
+      <!-- Filtre Époques (caché par défaut) -->
+      <div class="filter-group filter-content" id="epoquesFilterGroup" style="display: none;">
+        <div class="filter-header">
+          <h3 class="filter-title">Sélectionnez les époques</h3>
+          <div class="filter-toggle-buttons">
+            <button class="btn-mini" id="checkAllEpoques">Tout</button>
+            <button class="btn-mini" id="uncheckAllEpoques">Aucun</button>
+          </div>
+        </div>
+        <select id="epoquesFilters" class="filter-select" multiple size="10">
+          <!-- Généré dynamiquement -->
+        </select>
+        <p class="filter-hint">Maintenez Cmd/Ctrl pour sélectionner plusieurs époques</p>
+      </div>
+
+      <div class="filter-actions">
+        <button class="btn btn-secondary btn-full" id="resetFilters">Réinitialiser tout</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Toggle sidebar -->
+  <button class="btn-toggle-sidebar" id="toggleSidebar">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="3" y1="12" x2="21" y2="12"/>
+      <line x1="3" y1="6" x2="21" y2="6"/>
+      <line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </button>
+
+  <!-- Carte -->
+  <div id="map"></div>
+
+  <!-- Panel d'informations (bottom) -->
+  <div class="info-panel" id="infoPanel">
+    <div class="info-header">
+      <h3 id="infoPanelTitle">Sélectionnez un lieu sur la carte</h3>
+      <button class="btn-close" id="closeInfo">×</button>
+    </div>
+    <div class="info-content" id="infoPanelContent">
+      <p class="muted">Cliquez sur un marqueur pour voir les articles associés</p>
+    </div>
+  </div>
+
+  <!-- Modal Aide -->
+  <dialog id="helpModal" class="dialog">
+    <div class="dialog-header">
+      <h2>Guide d'utilisation</h2>
+      <button class="btn-close" id="closeHelp">×</button>
+    </div>
+    <div class="dialog-body">
+      <div class="help-section">
+        <h3>🗺️ Navigation</h3>
+        <ul>
+          <li>Cliquez sur les marqueurs pour voir les articles du lieu</li>
+          <li>Utilisez la molette ou +/- pour zoomer</li>
+          <li>Glissez pour déplacer la carte</li>
+          <li>Cliquez sur ⌂ pour recentrer</li>
+        </ul>
+      </div>
+      <div class="help-section">
+        <h3>🔍 Filtres</h3>
+        <ul>
+          <li>Bouton ☰ : Ouvrir les filtres</li>
+          <li>Filtrez par thème, époque ou numéro</li>
+          <li>La recherche trouve titre, auteur, mots-clés</li>
+        </ul>
+      </div>
+      <div class="help-section">
+        <h3>📊 Marqueurs</h3>
+        <ul>
+          <li>La taille indique le nombre d'articles</li>
+          <li>Les clusters regroupent les lieux proches</li>
+          <li>Cliquez sur un cluster pour zoomer</li>
+        </ul>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal Statistiques -->
+  <dialog id="statsModal" class="dialog dialog-large">
+    <div class="dialog-header">
+      <h2>Statistiques</h2>
+      <button class="btn-close" id="closeStats">×</button>
+    </div>
+    <div class="dialog-body" id="statsContent">
+      <!-- Généré dynamiquement -->
+    </div>
+  </dialog>
+
+  <!-- Modal Édition -->
+  <dialog id="editModal" class="dialog dialog-large">
+    <div class="dialog-header">
+      <h2>✏️ Modifier l'article</h2>
+      <button class="btn-close" id="closeEditModal">×</button>
+    </div>
+    <div class="dialog-body">
+      <form id="editForm" class="edit-form">
+        <input type="hidden" id="editIndex">
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="editAnnee">Année *</label>
+            <input type="number" id="editAnnee" required min="1991" max="2099">
+          </div>
+          
+          <div class="form-group">
+            <label for="editNumero">Numéro *</label>
+            <input type="text" id="editNumero" required placeholder="Ex: 01">
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="editTitre">Titre *</label>
+          <input type="text" id="editTitre" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="editPages">Page(s) *</label>
+          <input type="text" id="editPages" required placeholder="Ex: 12-15">
+        </div>
+        
+        <div class="form-group">
+          <label for="editAuteurs">Auteur(s) *</label>
+          <input type="text" id="editAuteurs" required placeholder="Séparez par des virgules">
+        </div>
+        
+        <div class="form-group">
+          <label for="editVilles">Ville(s) *</label>
+          <input type="text" id="editVilles" required placeholder="Séparez par des virgules">
+        </div>
+        
+        <div class="form-group">
+          <label for="editThemes">Thème(s)</label>
+          <input type="text" id="editThemes" placeholder="Séparez par des virgules">
+        </div>
+        
+        <div class="form-group">
+          <label for="editEpoque">Époque</label>
+          <input type="text" id="editEpoque" placeholder="Ex: XXe siècle">
+        </div>
+        
+        <div class="form-actions" style="display: flex; gap: 12px; margin-top: 24px;">
+          <button type="button" class="btn ghost" id="cancelEdit">Annuler</button>
+          <button type="submit" class="btn">💾 Enregistrer</button>
+        </div>
+      </form>
+      
+      <div id="editStatus" style="display: none; margin-top: 16px; padding: 12px; border-radius: 8px;"></div>
+    </div>
+  </dialog>
+
+  <!-- Loading -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Chargement des données...</p>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  
+  <!-- PapaParse -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  
+  <!-- Script principal -->
+  <script src="carte.js?v=1.7"></script>
+</body>
+</html>

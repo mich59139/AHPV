@@ -1,0 +1,65 @@
+================================================================================
+    AHPV - AMÉLIORATIONS APPLIQUÉES
+    Version 1.1 - 27 novembre 2024
+================================================================================
+
+✨ NOUVELLES FONCTIONNALITÉS
+
+1. 📍 MARQUEURS AMÉLIORÉS
+   ✅ Affichage du nom de la ville + nombre d'articles
+   ✅ Format: "VIZ 150" au lieu de juste "150"
+   ✅ Raccourcis personnalisés pour villes principales
+   ✅ Design rectangulaire plus lisible
+
+2. 📊 PANEL D'INFORMATIONS AGRANDI
+   ✅ Taille: 60% de l'écran (au lieu de 400px)
+   ✅ Largeur: 800px (au lieu de 600px)
+   ✅ Affiche 100 articles (au lieu de 50)
+   ✅ Affichage des thèmes pour chaque article
+   ✅ Scroll fluide et optimisé
+
+3. 🎛️ FILTRES PLUS ACCESSIBLES
+   ✅ Sidebar s'ouvre automatiquement au démarrage
+   ✅ Bouton toggle vert avec animation pulsante
+   ✅ Message d'accueil explicatif
+   ✅ Boutons "Tout" / "Aucun" pour chaque groupe de filtres
+   ✅ Interface plus intuitive
+
+================================================================================
+🎨 AMÉLIORATIONS VISUELLES
+
+✅ Bouton de filtres plus visible (vert avec animation)
+✅ Message d'accueil dans la sidebar
+✅ Boutons mini pour Tout cocher/décocher
+✅ Marqueurs plus informatifs
+✅ Panel plus grand et mieux organisé
+
+================================================================================
+📥 FICHIERS MODIFIÉS
+
+✅ carte.html - Ajout boutons Tout/Aucun + message accueil
+✅ carte.css - Nouveaux styles pour marqueurs et filtres
+✅ carte.js - Logique boutons + ouverture auto sidebar
+
+================================================================================
+🚀 POUR APPLIQUER
+
+1. Téléchargez les 3 fichiers mis à jour:
+   - carte.html
+   - carte.css
+   - carte.js
+
+2. Remplacez-les dans votre dossier "files 3"
+
+3. Rechargez la page (Cmd + Shift + R)
+
+================================================================================
+🎯 RÉSULTAT
+
+✅ Filtres visibles dès l'ouverture
+✅ Marqueurs plus informatifs (nom + nombre)
+✅ Panel plus grand avec plus d'infos
+✅ Boutons pour tout cocher/décocher rapidement
+✅ Interface plus intuitive et professionnelle
+
+================================================================================

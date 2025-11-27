@@ -1,0 +1,172 @@
+================================================================================
+    AHPV - VERSION 1.2
+    NOUVEAUTÉ : FILTRE PAR VILLE !
+================================================================================
+
+🎉 NOUVELLES FONCTIONNALITÉS
+
+✅ FILTRE PAR VILLE
+   - Sélectionnez les villes que vous voulez voir
+   - Triées par nombre d'articles (décroissant)
+   - Boutons "Tout" / "Aucun" pour cocher rapidement
+   - Exemple : Voir uniquement Vizille + Jarrie
+
+✅ TOUS LES FILTRES ONT MAINTENANT DES BOUTONS
+   - Thèmes : Tout / Aucun
+   - Époques : Tout / Aucun
+   - Villes : Tout / Aucun (NOUVEAU!)
+
+================================================================================
+📥 FICHIERS À TÉLÉCHARGER
+================================================================================
+
+⭐ carte.html (NOUVEAU - v1.2)
+⭐ carte.js (NOUVEAU - v1.2)  
+⭐ carte.css (inchangé mais re-téléchargez)
+
+================================================================================
+🔧 INSTALLATION
+================================================================================
+
+1. ARRÊTER le serveur Python (Ctrl+C dans le Terminal)
+
+2. TÉLÉCHARGER les 3 fichiers ci-dessus
+
+3. REMPLACER les fichiers dans ~/Downloads/"files 3"/
+   - Écrasez les anciens fichiers
+
+4. VIDER LE CACHE du navigateur :
+   
+   Safari :
+   - Cmd + Option + E (vider le cache)
+   - Ou : Développement → Vider les caches
+   
+   Chrome :
+   - Cmd + Shift + Delete
+   - Cochez "Images et fichiers en cache"
+   - Cliquez "Effacer les données"
+
+5. RELANCER le serveur :
+   cd ~/Downloads/"files 3"
+   python3 -m http.server 8000
+
+6. OUVRIR dans le navigateur :
+   http://localhost:8000/carte.html
+
+7. FORCER LE RECHARGEMENT :
+   Cmd + Shift + R
+
+================================================================================
+🎯 CE QUI VA CHANGER
+================================================================================
+
+Dans la sidebar des filtres, vous verrez maintenant 4 sections :
+
+📝 Recherche
+   [Champ de recherche texte]
+
+🏷️ Thèmes
+   [Tout] [Aucun]
+   ☑️ Résistance (245)
+   ☑️ Guerres (198)
+   ...
+
+📅 Époques
+   [Tout] [Aucun]
+   ☑️ XXe siècle (456)
+   ☑️ XIXe siècle (123)
+   ...
+
+📍 Villes (NOUVEAU!)
+   [Tout] [Aucun]
+   ☑️ Vizille (347)
+   ☑️ Jarrie (89)
+   ☑️ Séchilienne (67)
+   ...
+
+================================================================================
+💡 UTILISATION
+================================================================================
+
+Exemples d'usage :
+
+1. Voir uniquement les articles sur Vizille :
+   - Cliquez "Aucun" dans Villes
+   - Cochez uniquement "Vizille"
+   - Cliquez "Appliquer les filtres"
+
+2. Comparer Vizille et Jarrie :
+   - Cliquez "Aucun" dans Villes
+   - Cochez "Vizille" et "Jarrie"
+   - Cliquez "Appliquer"
+
+3. Guerres dans l'Oisans :
+   - Cliquez "Aucun" dans Thèmes
+   - Cochez "Guerres"
+   - Cliquez "Aucun" dans Villes
+   - Cochez les villes de l'Oisans
+   - Cliquez "Appliquer"
+
+================================================================================
+⚠️ IMPORTANT : VIDER LE CACHE
+================================================================================
+
+Si vous ne voyez PAS le filtre "Villes" après avoir remplacé les fichiers :
+
+1. Fermez COMPLÈTEMENT votre navigateur
+2. Rouvrez-le
+3. Allez dans les Réglages/Préférences
+4. Confidentialité → Effacer l'historique / Vider les caches
+5. Relancez http://localhost:8000/carte.html
+
+Le cache du navigateur peut empêcher de voir les modifications !
+
+================================================================================
+🐛 DÉPANNAGE
+================================================================================
+
+❌ "Je ne vois pas le filtre Villes"
+   → Videz le cache du navigateur (voir ci-dessus)
+   → Faites Cmd + Shift + R pour forcer le rechargement
+
+❌ "Les boutons Tout/Aucun ne marchent pas"
+   → Vérifiez que vous avez bien remplacé carte.js
+   → Ouvrez la console (Cmd + Option + J) pour voir les erreurs
+
+❌ "La sidebar ne s'ouvre pas automatiquement"
+   → Normal si vous avez déjà visité la page
+   → Cliquez sur le bouton vert à gauche
+
+================================================================================
+📊 RÉCAPITULATIF DES VERSIONS
+================================================================================
+
+v1.0 - Carte initiale
+   ✅ Marqueurs avec nombres
+   ✅ Filtres thèmes + époques
+
+v1.1 - Améliorations UI
+   ✅ Marqueurs avec nom de ville
+   ✅ Panel agrandi
+   ✅ Sidebar auto-ouverte
+   ✅ Boutons Tout/Aucun
+
+v1.2 - Filtre par ville (ACTUELLE)
+   ✅ Nouveau filtre Villes
+   ✅ Tri par popularité
+   ✅ Boutons Tout/Aucun pour villes
+
+================================================================================
+🎯 RÉSULTAT
+================================================================================
+
+Vous pourrez maintenant filtrer par :
+✅ Recherche texte
+✅ Thèmes
+✅ Époques  
+✅ Villes (NOUVEAU!)
+✅ Numéros de revue
+
+Avec des boutons "Tout" / "Aucun" partout pour aller plus vite !
+
+================================================================================

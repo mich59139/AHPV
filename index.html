@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+  
+  <!-- SEO -->
+  <title>AHPV – Catalogue des Articles</title>
+  <meta name="description" content="Catalogue des articles de l'association AHPV - Amis de l'Histoire du Pays Vizillois. Recherchez et explorez nos publications historiques." />
+  <meta name="keywords" content="histoire, Vizille, Isère, patrimoine, articles, publications, AHPV" />
+  <meta name="author" content="AHPV - Amis de l'Histoire du Pays Vizillois" />
+  
+  <!-- Open Graph (partage réseaux sociaux) -->
+  <meta property="og:title" content="AHPV – Catalogue des Articles" />
+  <meta property="og:description" content="Explorez le catalogue des articles historiques de l'AHPV" />
+  <meta property="og:image" content="assets/logo-ahpv.png" />
+  <meta property="og:type" content="website" />
+  
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="AHPV – Catalogue des Articles" />
+  <meta name="twitter:description" content="Catalogue des articles historiques" />
+  
+  <!-- Performance -->
+  <link rel="preconnect" href="https://github.com">
+  <link rel="preconnect" href="https://api.github.com">
+  
+  <!-- Ressources -->
+  <link rel="icon" href="assets/favicon.png" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="app.js" defer></script>
+</head>
+<body>
+
+  <!-- Fallback JavaScript désactivé -->
+  <noscript>
+    <div class="panel" style="margin: 20px auto; max-width: 600px; text-align: center; background: #fff3cd; border-color: #ffc107;">
+      <h2 style="margin-top: 0;">⚠️ JavaScript requis</h2>
+      <p>Ce catalogue nécessite JavaScript pour fonctionner correctement.</p>
+      <p>Veuillez activer JavaScript dans votre navigateur pour accéder au catalogue.</p>
+    </div>
+  </noscript>
+
+  <!-- Bandeau + statuts -->
+  <header class="site-header">
+    <div class="wrap">
+      <div class="brand">
+        <img 
+          src="assets/logo-ahpv.png" 
+          alt="Amis de l'Histoire du Pays Vizillois"
+          loading="eager"
+          decoding="async"
+        />
+        <div class="title">
+          <h1>Catalogue des Articles</h1>
+          <div class="badges panel badges">
+            <span id="status-count" aria-live="polite">Fichier : —</span>
+            <span class="sep" aria-hidden="true">•</span>
+            <span id="status-auth" aria-live="polite">🔓 Invité</span>
+            <span class="sep" aria-hidden="true">•</span>
+            <span id="status-save" class="hidden" aria-live="polite">✓ Sauvegardé</span>
+            <span id="status-unsaved" class="hidden" aria-live="polite">⚠ Non sauvegardé</span>
+            <span class="grow"></span>
+            <button 
+              id="login-btn" 
+              class="btn ghost" 
+              title="Se connecter à GitHub pour enregistrer"
+              aria-label="Se connecter à GitHub"
+            >
+              🔐 Connexion
+            </button>
+            <button 
+              id="logout-btn" 
+              class="btn ghost" 
+              title="Se déconnecter de GitHub"
+              aria-label="Se déconnecter de GitHub"
+            >
+              📕 Déconnexion
+            </button>
+            <button 
+              id="help-btn" 
+              class="btn ghost" 
+              title="Afficher l'aide"
+              aria-label="Afficher l'aide"
+              aria-haspopup="dialog"
+            >
+              ❓ Aide
+            </button>
+            <a 
+              href="carte.html" 
+              class="btn" 
+              style="background: var(--accent); color: #fff;"
+              title="Voir la carte interactive"
+              aria-label="Accéder à la carte interactive"
+            >
+              🗺️ Vue carte
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <!-- Panneau filtres -->
+    <section class="panel" aria-label="Filtres de recherche">
+      <div class="row">
+        <div class="field">
+          <label for="filter-annee">Année</label>
+          <select id="filter-annee" aria-label="Filtrer par année">
+            <option value="">(toutes)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="filter-numero">Numéro</label>
+          <select id="filter-numero" aria-label="Filtrer par numéro">
+            <option value="">(tous)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="filter-epoque">Époque</label>
+          <select id="filter-epoque" aria-label="Filtrer par époque">
+            <option value="">(toutes)</option>
+          </select>
+        </div>
+
+        <div class="field grow">
+          <label for="search">Recherche</label>
+          <input 
+            id="search" 
+            type="search" 
+            placeholder="titre, auteur, ville, thème…"
+            aria-label="Rechercher dans le catalogue"
+            aria-describedby="search-help"
+          />
+          <span id="search-help" class="sr-only">
+            Tapez pour rechercher dans les titres, auteurs, villes ou thèmes
+          </span>
+        </div>
+
+        <div class="field">
+          <label>&nbsp;</label>
+          <button 
+            id="reset-filters"
+            class="btn ghost" 
+            title="Réinitialiser tous les filtres"
+            aria-label="Réinitialiser tous les filtres"
+          >
+            ↺ Réinitialiser
+          </button>
+        </div>
+      </div>
+
+      <div class="row actions">
+        <div class="left">
+          <button 
+            id="add-article-btn"
+            class="btn" 
+            title="Ajouter un nouvel article"
+            aria-label="Ajouter un nouvel article"
+            aria-haspopup="dialog"
+          >
+            ➕ Ajouter un article
+          </button>
+          <button 
+            id="lists-btn" 
+            class="btn ghost" 
+            title="Éditer les listes Auteurs/Villes/Thèmes/Époques"
+            aria-label="Gérer les listes"
+            aria-haspopup="dialog"
+          >
+            📋 Listes
+          </button>
+        </div>
+        <div class="right">
+          <button 
+            id="export-copy" 
+            class="btn ghost" 
+            title="Copier les données au format TSV"
+            aria-label="Copier (TSV)"
+          >
+            📄 Copier
+          </button>
+          <button 
+            id="export-csv" 
+            class="btn ghost" 
+            title="Exporter les articles filtrés en CSV"
+            aria-label="Exporter CSV"
+          >
+            ⬇️ CSV
+          </button>
+          <button 
+            id="export-xlsx" 
+            class="btn ghost" 
+            title="Exporter les articles filtrés en Excel"
+            aria-label="Exporter Excel"
+          >
+            📊 Excel
+          </button>
+          <button 
+            id="export-print" 
+            class="btn ghost" 
+            title="Imprimer le catalogue"
+            aria-label="Imprimer"
+          >
+            🖨️ Imprimer
+          </button>
+          <button 
+            id="export-csv-all" 
+            class="btn ghost" 
+            title="Exporter tous les articles en CSV"
+            aria-label="Exporter CSV (Tout)"
+          >
+            ⬇️ CSV (Tout)
+          </button>
+          <button 
+            id="export-xlsx-all" 
+            class="btn ghost" 
+            title="Exporter tous les articles en Excel"
+            aria-label="Exporter Excel (Tout)"
+          >
+            📊 Excel (Tout)
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tableau -->
+    <section class="panel" aria-label="Liste des articles">
+      <div class="table-wrap" role="region" aria-label="Tableau des articles" tabindex="0">
+        <table class="table">
+          <thead>
+            <tr>
+              <th 
+                data-col="Année" 
+                tabindex="0"
+                role="button"
+                aria-sort="none"
+                aria-label="Trier par année"
+              >
+                Année
+              </th>
+              <th 
+                data-col="Numéro" 
+                tabindex="0"
+                role="button"
+                aria-sort="none"
+                aria-label="Trier par numéro"
+              >
+                Numéro
+              </th>
+              <th 
+                data-col="Titre" 
+                tabindex="0"
+                role="button"
+                aria-sort="none"
+                aria-label="Trier par titre"
+              >
+                Titre
+              </th>
+              <th 
+                data-col="Page(s)" 
+                tabindex="0"
+                role="button"
+                aria-sort="none"
+                aria-label="Trier par page"
+              >
+                Page(s)
+              </th>
+              <th 
+                data-col="Auteur(s)" 
+                tabindex="0"
+                role="button"
+                aria-sort="none"
+                aria-label="Trier par auteur"
+              >
+                Auteur(s)
+              </th>
+              <th 
+                data-col="Ville(s)" 
+                tabindex="0"
+                role="button"
+                aria-sort="none"
+                aria-label="Trier par ville"
+              >
+                Ville(s)
+              </th>
+              <th 
+                data-col="Theme(s)" 
+                tabindex="0"
+                role="button"
+                aria-sort="none"
+                aria-label="Trier par thème"
+              >
+                Thème(s)
+              </th>
+              <th 
+                data-col="Epoque" 
+                tabindex="0"
+                role="button"
+                aria-sort="none"
+                aria-label="Trier par période"
+              >
+                Période
+              </th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+
+      <nav class="pager" aria-label="Navigation de pagination">
+        <button 
+          id="prev" 
+          class="btn ghost" 
+          title="Page précédente"
+          aria-label="Page précédente"
+        >
+          ◀
+        </button>
+        <span id="pageinfo" aria-live="polite" aria-atomic="true">—</span>
+        <button 
+          id="next" 
+          class="btn ghost" 
+          title="Page suivante"
+          aria-label="Page suivante"
+        >
+          ▶
+        </button>
+      </nav>
+    </section>
+  </main>
+
+  <!-- Modale : ajout d'article -->
+  <dialog 
+    id="add-modal" 
+    class="dialog"
+    aria-labelledby="add-modal-title"
+    aria-describedby="add-modal-desc"
+  >
+    <form id="add-form" method="dialog">
+      <h3 id="add-modal-title">Ajouter un article</h3>
+      <p id="add-modal-desc" class="sr-only">
+        Formulaire pour ajouter un nouvel article au catalogue
+      </p>
+
+      <div class="grid">
+        <label for="a-annee">
+          Année
+          <input 
+            id="a-annee" 
+            name="annee"
+            type="number" 
+            min="1900" 
+            max="2100"
+            step="1"
+            inputmode="numeric" 
+            placeholder="2025" 
+            required 
+            aria-required="true"
+            aria-describedby="annee-help"
+          />
+          <span id="annee-help" class="help-text sr-only">Format : YYYY</span>
+        </label>
+
+        <label for="a-numero">
+          Numéro
+          <select 
+            id="a-numero"
+            name="numero"
+            required
+            aria-required="true"
+            aria-describedby="numero-help"
+          ></select>
+          <input 
+            id="a-numero-new" 
+            class="hidden" 
+            type="text" 
+            placeholder="Mémoire n°68"
+            aria-label="Nouveau numéro"
+          />
+          <span id="numero-help" class="help-text sr-only">
+            Choisissez un numéro existant ou créez-en un nouveau
+          </span>
+        </label>
+
+        <label for="a-titre">
+          Titre
+          <input 
+            id="a-titre" 
+            name="titre"
+            type="text" 
+            required 
+            aria-required="true"
+            minlength="3"
+            maxlength="500"
+          />
+        </label>
+
+        <label for="a-pages">
+          Page(s)
+          <input 
+            id="a-pages" 
+            name="pages"
+            type="text" 
+            placeholder="12 à 16"
+            aria-describedby="pages-help"
+          />
+          <span id="pages-help" class="help-text sr-only">
+            Format libre, par exemple : 12-16 ou p.42
+          </span>
+        </label>
+
+        <label for="a-auteurs">
+          Auteur(s)
+          <input 
+            id="a-auteurs" 
+            name="auteurs"
+            list="dl-auteurs" 
+            type="text" 
+            placeholder="Nom 1; Nom 2"
+            aria-describedby="auteurs-help"
+          />
+          <span id="auteurs-help" class="help-text sr-only">
+            Séparez plusieurs auteurs par des point-virgules
+          </span>
+        </label>
+
+        <label for="a-villes">
+          Ville(s)
+          <input 
+            id="a-villes" 
+            name="villes"
+            list="dl-villes" 
+            type="text" 
+            placeholder="Ville 1; Ville 2"
+            aria-describedby="villes-help"
+          />
+          <span id="villes-help" class="help-text sr-only">
+            Séparez plusieurs villes par des point-virgules
+          </span>
+        </label>
+
+        <label for="a-themes">
+          Thème(s)
+          <input 
+            id="a-themes" 
+            name="themes"
+            list="dl-themes" 
+            type="text" 
+            placeholder="Thème 1; Thème 2"
+            aria-describedby="themes-help"
+          />
+          <span id="themes-help" class="help-text sr-only">
+            Séparez plusieurs thèmes par des point-virgules
+          </span>
+        </label>
+
+        <label for="a-epoque">
+          Époque
+          <input 
+            id="a-epoque" 
+            name="epoque"
+            list="dl-epoques" 
+            type="text" 
+            placeholder="XXe siècle"
+            aria-describedby="epoque-help"
+          />
+          <span id="epoque-help" class="help-text sr-only">
+            Période historique concernée
+          </span>
+        </label>
+      </div>
+
+      <menu class="dialog-actions">
+        <button 
+          type="button" 
+          id="add-cancel" 
+          class="btn ghost"
+          aria-label="Annuler l'ajout"
+        >
+          Annuler
+        </button>
+        <button 
+          type="submit" 
+          class="btn"
+          aria-label="Enregistrer l'article"
+        >
+          Enregistrer
+        </button>
+      </menu>
+    </form>
+  </dialog>
+
+  <!-- Modale : Confirmation de suppression -->
+  <dialog 
+    id="confirm-modal" 
+    class="dialog"
+    aria-labelledby="confirm-modal-title"
+  >
+    <form method="dialog">
+      <h3 id="confirm-modal-title">Confirmer la suppression</h3>
+      <p>Êtes-vous sûr de vouloir supprimer cet article ?</p>
+      <p><strong id="confirm-title"></strong></p>
+      <p class="help-text" style="color: var(--muted); font-size: 14px;">
+        Cette action est irréversible après sauvegarde sur GitHub.
+      </p>
+      <menu class="dialog-actions">
+        <button 
+          type="button"
+          id="confirm-cancel" 
+          class="btn ghost"
+          aria-label="Annuler la suppression"
+        >
+          Annuler
+        </button>
+        <button 
+          type="submit"
+          id="confirm-delete" 
+          class="btn"
+          style="background: var(--danger);"
+          aria-label="Confirmer la suppression"
+        >
+          Supprimer
+        </button>
+      </menu>
+    </form>
+  </dialog>
+
+  <!-- Modale : Aide -->
+  <dialog 
+    id="help-modal" 
+    class="dialog"
+    aria-labelledby="help-modal-title"
+  >
+    <h3 id="help-modal-title">Aide rapide</h3>
+    
+    <div style="padding: 18px;">
+      <h4 style="margin-top: 0;">Fonctionnalités</h4>
+      <ul class="help">
+        <li><b>Tri :</b> cliquez sur l'en-tête d'une colonne pour trier.</li>
+        <li><b>Recherche :</b> tapez un mot dans le champ de recherche (filtre en direct).</li>
+        <li><b>Édition inline :</b> double-clic sur une ligne pour éditer (sauvegarde automatique).</li>
+        <li><b>Numéro :</b> choisissez dans la liste ou créez "Nouveau numéro…".</li>
+        <li><b>Listes :</b> gérez auteurs / villes / thèmes / époques (renommer, dédupliquer, CSV).</li>
+        <li><b>Export :</b> exportez en CSV ou Excel (filtres actifs ou données complètes).</li>
+      </ul>
+
+      <h4>Raccourcis clavier</h4>
+      <dl class="shortcuts" style="display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0;">
+        <dt><kbd style="background: var(--panel); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border);">Ctrl</kbd> + <kbd style="background: var(--panel); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border);">K</kbd></dt>
+        <dd style="margin: 0;">Focus sur la recherche</dd>
+        
+        <dt><kbd style="background: var(--panel); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border);">Ctrl</kbd> + <kbd style="background: var(--panel); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border);">N</kbd></dt>
+        <dd style="margin: 0;">Nouvel article</dd>
+        
+        <dt><kbd style="background: var(--panel); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border);">Ctrl</kbd> + <kbd style="background: var(--panel); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border);">S</kbd></dt>
+        <dd style="margin: 0;">Sauvegarder sur GitHub</dd>
+        
+        <dt><kbd style="background: var(--panel); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border);">Échap</kbd></dt>
+        <dd style="margin: 0;">Fermer la modale active</dd>
+      </dl>
+
+      <h4 style="margin-top: 16px;">GitHub</h4>
+      <ul class="help">
+        <li><b>Connexion :</b> connectez-vous pour sauvegarder vos modifications.</li>
+        <li><b>Invité :</b> vous pouvez consulter et filtrer sans connexion.</li>
+        <li><b>Sauvegarde :</b> vos modifications sont enregistrées sur GitHub.</li>
+      </ul>
+    </div>
+
+    <menu class="dialog-actions">
+      <button 
+        id="help-close" 
+        class="btn"
+        aria-label="Fermer l'aide"
+      >
+        Fermer
+      </button>
+    </menu>
+  </dialog>
+
+  <!-- Modale : mini-éditeur des listes -->
+  <dialog 
+    id="lists-modal" 
+    class="dialog lists"
+    aria-labelledby="lists-modal-title"
+  >
+    <h3 id="lists-modal-title">Gestion des listes</h3>
+
+    <div class="tabs" role="tablist" aria-label="Types de listes">
+      <button 
+        class="tab active" 
+        data-kind="auteurs"
+        role="tab"
+        aria-selected="true"
+        aria-controls="list-items"
+      >
+        Auteurs
+      </button>
+      <button 
+        class="tab" 
+        data-kind="villes"
+        role="tab"
+        aria-selected="false"
+        aria-controls="list-items"
+      >
+        Villes
+      </button>
+      <button 
+        class="tab" 
+        data-kind="themes"
+        role="tab"
+        aria-selected="false"
+        aria-controls="list-items"
+      >
+        Thèmes
+      </button>
+      <button 
+        class="tab" 
+        data-kind="epoques"
+        role="tab"
+        aria-selected="false"
+        aria-controls="list-items"
+      >
+        Époques
+      </button>
+      <span id="list-count" class="count" aria-live="polite"></span>
+    </div>
+
+    <div class="lists-body">
+      <div class="editor">
+        <input 
+          id="list-input" 
+          type="text" 
+          placeholder="Nouvel élément…"
+          aria-label="Nouvel élément de liste"
+        />
+        <button 
+          id="list-add" 
+          class="btn"
+          aria-label="Ajouter à la liste"
+        >
+          Ajouter
+        </button>
+        <button 
+          id="list-sort" 
+          class="btn ghost"
+          aria-label="Trier alphabétiquement"
+        >
+          Trier
+        </button>
+        <button 
+          id="list-dedupe" 
+          class="btn ghost"
+          aria-label="Supprimer les doublons"
+        >
+          Dédupliquer
+        </button>
+        <button 
+          id="list-import" 
+          class="btn ghost"
+          aria-label="Importer depuis CSV"
+        >
+          Importer CSV
+        </button>
+        <input 
+          id="list-file" 
+          type="file" 
+          accept=".csv,text/csv" 
+          class="hidden"
+          aria-label="Fichier CSV à importer"
+        />
+        <button 
+          id="list-export" 
+          class="btn ghost"
+          aria-label="Exporter en CSV"
+        >
+          Exporter CSV
+        </button>
+      </div>
+
+      <ul 
+        id="list-items" 
+        class="items"
+        role="list"
+        aria-label="Éléments de la liste"
+      ></ul>
+    </div>
+
+    <menu class="dialog-actions">
+      <button 
+        id="list-close" 
+        class="btn ghost"
+        aria-label="Fermer sans sauvegarder"
+      >
+        Fermer
+      </button>
+      <button 
+        id="list-save" 
+        class="btn"
+        aria-label="Enregistrer les modifications sur GitHub"
+      >
+        Enregistrer sur GitHub
+      </button>
+    </menu>
+  </dialog>
+
+  <!-- Datalists (auto-complétion) -->
+  <datalist id="dl-auteurs"></datalist>
+  <datalist id="dl-villes"></datalist>
+  <datalist id="dl-themes"></datalist>
+  <datalist id="dl-epoques"></datalist>
+
+  <!-- Zone de notifications toast -->
+  <div 
+    id="toast-container" 
+    class="toast-container" 
+    aria-live="polite"
+    aria-atomic="true"
+  ></div>
+
+  <!-- Overlay chargement -->
+  <div 
+    id="loading" 
+    class="loading hidden"
+    role="status"
+    aria-live="polite"
+  >
+    <div style="text-align: center;">
+      <div style="font-size: 32px; margin-bottom: 10px;" aria-hidden="true">⏳</div>
+      <div>Chargement des données…</div>
+    </div>
+  </div>
+
+  <!-- Styles additionnels pour les améliorations -->
+  <style>
+    /* Classes utilitaires */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
+    }
+
+    .help-text {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+      display: block;
+    }
+
+    /* Toast notifications */
+    .toast-container {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      z-index: 40;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 400px;
+    }
+
+    .toast {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 18px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      animation: slideIn 0.3s ease-out;
+    }
+
+    .toast-success {
+      border-left: 4px solid var(--accent);
+    }
+
+    .toast-error {
+      border-left: 4px solid var(--danger);
+    }
+
+    .toast-info {
+      border-left: 4px solid #3b82f6;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    /* Focus visible pour l'accessibilité */
+    *:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    /* Amélioration des boutons */
+    .btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    /* Amélioration des inputs */
+    input:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(107, 138, 33, 0.1);
+    }
+
+    /* États du badge de sauvegarde */
+    #status-save {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    #status-unsaved {
+      color: #f59e0b;
+      font-weight: 600;
+    }
+
+    /* Mobile responsive */
+    @media (max-width: 720px) {
+      .toast-container {
+        top: 60px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+      }
+
+      .row.actions {
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .row.actions .left,
+      .row.actions .right {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .dialog {
+        width: calc(100vw - 20px);
+      }
+    }
+  </style>
+</body>
+</html>

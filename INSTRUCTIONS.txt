@@ -1,0 +1,220 @@
+================================================================================
+    AHPV - MODULE DE CARTOGRAPHIE INTERACTIVE
+    Instructions d'installation
+================================================================================
+
+🎉 FÉLICITATIONS ! Votre module de cartographie est prêt !
+
+📦 CE QUI A ÉTÉ CRÉÉ :
+================================================================================
+
+✅ carte.html       - Page de cartographie interactive  
+✅ carte.css        - Styles assortis à la charte AHPV
+✅ carte.js         - Logique complète de la carte
+✅ README_CARTOGRAPHIE.md - Documentation complète
+
+📊 Vos données existantes ont été intégrées :
+✅ 922 articles de la revue Mémoire
+✅ 67 villes géolocalisées
+✅ Thèmes et époques
+✅ Logo AHPV
+
+================================================================================
+🚀 OPTION 1 : TESTER EN LOCAL (RECOMMANDÉ)
+================================================================================
+
+1. Ouvrez le Terminal
+
+2. Naviguez vers le dossier :
+   cd ~/Downloads/ahpv_cartographie
+
+3. Lancez un serveur :
+   python3 -m http.server 8000
+
+4. Ouvrez votre navigateur :
+   - Catalogue : http://localhost:8000/index.html
+   - CARTE : http://localhost:8000/carte.html
+
+================================================================================
+🌐 OPTION 2 : DÉPLOYER SUR GITHUB
+================================================================================
+
+1. Allez sur https://github.com/mich59139/AHPV
+
+2. Uploadez TOUS les fichiers :
+   - carte.html
+   - carte.css
+   - carte.js
+   - index.html (existant)
+   - app.js (existant)
+   - style.css (existant)
+   - dossier data/ (avec les CSV)
+   - dossier assets/ (avec le logo)
+
+3. Settings → Pages → Activer
+
+4. Votre carte sera en ligne à :
+   https://mich59139.github.io/AHPV/carte.html
+
+================================================================================
+🔗 LIER LE CATALOGUE ET LA CARTE
+================================================================================
+
+Pour ajouter un bouton "Vue carte" dans votre catalogue :
+
+Dans index.html, cherchez la ligne avec les boutons du header
+et ajoutez :
+
+    <a href="carte.html" class="btn ghost">🗺️ Vue carte</a>
+
+Le bouton "Retour au catalogue" est déjà dans carte.html ✅
+
+================================================================================
+🎯 FONCTIONNALITÉS DE LA CARTE
+================================================================================
+
+📍 Navigation :
+   - Cliquez sur les marqueurs pour voir les articles
+   - Bouton ☰ : Ouvrir les filtres
+   - Bouton ? : Aide
+   - Bouton 📊 : Statistiques
+   - Bouton ⌂ : Recentrer
+
+🔍 Filtres disponibles :
+   - Recherche textuelle (titre, auteur)
+   - Filtres par thème
+   - Filtres par époque
+   - Filtres par numéro de revue
+
+📊 Statistiques :
+   - Nombre total d'articles
+   - Top 10 des villes
+   - Répartition par thème
+
+================================================================================
+🗺️ VILLES GÉOLOCALISÉES (50+)
+================================================================================
+
+Les principales villes sont déjà configurées avec leurs coordonnées GPS :
+
+✅ Vizille (centre)
+✅ Jarrie
+✅ Séchilienne
+✅ Grenoble
+✅ Bourg d'Oisans
+✅ L'Oisans
+✅ Saint Georges de Commiers
+✅ Claix, Varces, Champagnier
+✅ Livet, Gavet, Rioupéroux
+✅ Et 40+ autres...
+
+📍 Pour ajouter une ville :
+Ouvrez carte.js et ajoutez dans VILLE_COORDINATES :
+  'Nouvelle Ville': [latitude, longitude],
+
+================================================================================
+📊 VOS DONNÉES
+================================================================================
+
+✅ 922 articles analysés
+✅ Période couverte : 1991-aujourd'hui
+✅ 67 villes référencées
+✅ Thèmes variés (Résistance, Guerres, Vie locale, etc.)
+✅ Plusieurs époques (XIXe, XXe, XXIe siècle)
+
+================================================================================
+🎨 DESIGN
+================================================================================
+
+✅ Reprend la charte graphique AHPV (beige/olive)
+✅ Logo AHPV intégré
+✅ Responsive (PC, tablette, mobile)
+✅ Modales d'aide
+✅ Interface sobre et professionnelle
+
+================================================================================
+📱 RESPONSIVE
+================================================================================
+
+✅ Desktop : Sidebar latérale + carte
+✅ Tablet : Sidebar plein écran
+✅ Mobile : Interface adaptée, boutons tactiles
+
+================================================================================
+🔧 PERSONNALISATION
+================================================================================
+
+Couleurs :
+  Modifiez carte.css, section :root
+
+Villes :
+  Ajoutez dans carte.js, VILLE_COORDINATES
+
+Données :
+  Modifiez data/articles.csv
+
+================================================================================
+📚 DOCUMENTATION
+================================================================================
+
+Lisez README_CARTOGRAPHIE.md pour :
+- Documentation technique complète
+- Guide d'utilisation détaillé
+- Dépannage
+- Améliorations futures possibles
+
+================================================================================
+🐛 PROBLÈMES COURANTS
+================================================================================
+
+❌ La carte ne charge pas :
+   → Utilisez un serveur local (python3 -m http.server 8000)
+   → Ne PAS double-cliquer sur carte.html
+
+❌ Pas de marqueurs :
+   → Vérifiez que data/articles.csv est accessible
+   → Ouvrez la console (F12) pour voir les erreurs
+
+❌ Filtres ne marchent pas :
+   → Cliquez sur "Réinitialiser"
+   → Vérifiez la console (F12)
+
+================================================================================
+🎯 PROCHAINES ÉTAPES
+================================================================================
+
+1. ✅ Testez en local
+2. ✅ Vérifiez que tout fonctionne
+3. ✅ Uploadez sur GitHub
+4. ✅ Ajoutez le lien dans index.html
+5. ✅ Partagez avec l'association !
+
+================================================================================
+💡 AMÉLIORATIONS FUTURES POSSIBLES
+================================================================================
+
+- Timeline interactive (vue chronologique)
+- Export PNG de la carte
+- Liens vers les PDFs des articles
+- Graphe de réseau thématique
+- Heatmap temporelle
+- Recherche avancée par auteur
+
+================================================================================
+📞 BESOIN D'AIDE ?
+================================================================================
+
+1. Lisez README_CARTOGRAPHIE.md
+2. Ouvrez la console du navigateur (F12)
+3. Vérifiez que tous les fichiers sont présents
+
+================================================================================
+                        ✨ PROJET TERMINÉ ! ✨
+================================================================================
+
+Votre module de cartographie est opérationnel et prêt à être déployé !
+
+🗺️ Pour l'AHPV - Amis de l'Histoire du Pays Vizillois
+📚 922 articles | 67 villes | 30+ ans d'histoire
+
+================================================================================
