@@ -860,3 +860,58 @@ async function init(){
   }
 }
 if(document.readyState==="loading"){ document.addEventListener("DOMContentLoaded", init); } else { init(); }
+
+/* ==== Modal Edit ==== */
+window._openEditModal = (idx) => {
+  if (idx < 0 || idx >= ARTICLES.length) return;
+  
+  const article = ARTICLES[idx];
+  const modal = document.getElementById('edit-modal');
+  
+  // Remplir le formulaire
+  document.getElementById('edit-row-index').value = idx;
+  document.getElementById('e-annee').value = article['Année'] || '';
+  document.getElementById('e-numero').value = article['Numéro'] || '';
+  document.getElementById('e-titre').value = article.Titre || '';
+  document.getElementById('e-pages').value = article['Page(s)'] || '';
+  document.getElementById('e-auteurs').value = article['Auteur(s)'] || '';
+  document.getElementById('e-villes').value = article['Ville(s)'] || '';
+  document.getElementById('e-themes').value = article['Theme(s)'] || '';
+  document.getElementById('e-epoque').value = article['Epoque'] || '';
+  
+  modal.showModal();
+};
+
+// Gérer la soumission du formulaire d'édition
+document.getElementById('edit-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  
+  const idx = parseInt(document.getElementById('edit-row-index').value);
+  if (idx < 0 || idx >= ARTICLES.length) return;
+  
+  // Mettre à jour l'article
+  ARTICLES[idx] = {
+    'Année': document.getElementById('e-annee').value,
+    'Numéro': document.getElementById('e-numero').value,
+    'Titre': document.getElementById('e-titre').value,
+    'Page(s)': document.getElementById('e-pages').value,
+    'Auteur(s)': document.getElementById('e-auteurs').value,
+    'Ville(s)': document.getElementById('e-villes').value,
+    'Theme(s)': document.getElementById('e-themes').value,
+    'Epoque': document.getElementById('e-epoque').value
+  };
+  
+  // Marquer comme non sauvegardé et re-rendre
+  onEdit();
+  render();
+  
+  document.getElementById('edit-modal').close();
+});
+
+// Bouton Annuler
+document.getElementById('edit-cancel').addEventListener('click', () => {
+  document.getElementById('edit-modal').close();
+});
+
+// Remplacer _inlineEdit pour utiliser le modal
+window._inlineEdit = window._openEditModal;

@@ -496,6 +496,113 @@
     </form>
   </dialog>
 
+  <!-- Modale : Édition d'article -->
+  <dialog 
+    id="edit-modal" 
+    class="dialog"
+    aria-labelledby="edit-modal-title"
+  >
+    <form id="edit-form" method="dialog">
+      <h3 id="edit-modal-title">✏️ Modifier l'article</h3>
+      <input type="hidden" id="edit-row-index">
+
+      <div class="grid">
+        <label for="e-annee">
+          Année
+          <input 
+            id="e-annee" 
+            type="number" 
+            min="1900" 
+            max="2100"
+            required 
+          />
+        </label>
+
+        <label for="e-numero">
+          Numéro
+          <input 
+            id="e-numero" 
+            type="text" 
+            required 
+          />
+        </label>
+
+        <label for="e-titre" style="grid-column: 1 / -1;">
+          Titre
+          <input 
+            id="e-titre" 
+            type="text" 
+            required 
+          />
+        </label>
+
+        <label for="e-pages">
+          Page(s)
+          <input 
+            id="e-pages" 
+            type="text" 
+            placeholder="12-15"
+            required 
+          />
+        </label>
+
+        <label for="e-auteurs" style="grid-column: 1 / -1;">
+          Auteur(s)
+          <input 
+            id="e-auteurs" 
+            type="text" 
+            placeholder="Séparez par des virgules"
+            required 
+          />
+        </label>
+
+        <label for="e-villes" style="grid-column: 1 / -1;">
+          Ville(s)
+          <input 
+            id="e-villes" 
+            type="text" 
+            placeholder="Séparez par des virgules"
+            required 
+          />
+        </label>
+
+        <label for="e-themes" style="grid-column: 1 / -1;">
+          Thème(s)
+          <input 
+            id="e-themes" 
+            type="text" 
+            placeholder="Séparez par des virgules"
+          />
+        </label>
+
+        <label for="e-epoque">
+          Époque
+          <input 
+            id="e-epoque" 
+            type="text" 
+            placeholder="Ex: XXe siècle"
+          />
+        </label>
+      </div>
+
+      <menu class="dialog-actions">
+        <button 
+          type="button"
+          id="edit-cancel" 
+          class="btn ghost"
+        >
+          Annuler
+        </button>
+        <button 
+          type="submit"
+          class="btn"
+        >
+          💾 Enregistrer
+        </button>
+      </menu>
+    </form>
+  </dialog>
+
   <!-- Modale : Confirmation de suppression -->
   <dialog 
     id="confirm-modal" 

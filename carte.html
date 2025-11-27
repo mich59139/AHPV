@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
   
-  <title>AHPV – Carte Interactive des Articles v1.7</title>
+  <title>AHPV – Carte Interactive des Articles v1.8</title>
   <meta name="description" content="Carte interactive des articles de la revue Mémoire - AHPV" />
   
   <!-- Leaflet CSS -->
@@ -14,7 +14,7 @@
   
   <!-- Icône et styles -->
   <link rel="icon" href="assets/favicon.png" />
-  <link rel="stylesheet" href="carte.css?v=1.7" />
+  <link rel="stylesheet" href="carte.css?v=1.8" />
 </head>
 <body>
   <!-- Header -->
@@ -146,6 +146,7 @@
   <!-- Panel d'informations (bottom) -->
   <div class="info-panel" id="infoPanel">
     <div class="info-header">
+      <button class="btn-back" id="backFromPanel">← Retour</button>
       <h3 id="infoPanelTitle">Sélectionnez un lieu sur la carte</h3>
       <button class="btn-close" id="closeInfo">×</button>
     </div>
@@ -276,6 +277,6 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   
   <!-- Script principal -->
-  <script src="carte.js?v=1.7"></script>
+  <script src="carte.js?v=1.8"></script>
 </body>
 </html>

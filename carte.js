@@ -613,6 +613,10 @@ function initEventListeners() {
         document.getElementById('infoPanel').classList.remove('active');
     });
     
+    document.getElementById('backFromPanel').addEventListener('click', () => {
+        document.getElementById('infoPanel').classList.remove('active');
+    });
+    
     // Filtres
     document.getElementById('resetFilters').addEventListener('click', resetFilters);
     

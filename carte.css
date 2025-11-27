@@ -486,6 +486,49 @@ html, body {
 .info-header h3 {
   font-size: 16px;
   margin: 0;
+  flex: 1;
+  text-align: center;
+}
+
+.btn-back {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-back:hover {
+  transform: translateX(-2px);
+  box-shadow: 0 2px 8px rgba(107, 138, 33, 0.3);
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.btn-close:hover {
+  background: var(--border);
+  color: var(--text);
 }
 
 .info-content {
