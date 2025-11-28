@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
   
   <!-- SEO -->
-  <title>AHPV – Catalogue des Articles</title>
+  <title>AHPV – Catalogue des Articles v1.11</title>
   <meta name="description" content="Catalogue des articles de l'association AHPV - Amis de l'Histoire du Pays Vizillois. Recherchez et explorez nos publications historiques." />
   <meta name="keywords" content="histoire, Vizille, Isère, patrimoine, articles, publications, AHPV" />
   <meta name="author" content="AHPV - Amis de l'Histoire du Pays Vizillois" />
@@ -86,15 +86,6 @@
             >
               ❓ Aide
             </button>
-            <a 
-              href="carte.html" 
-              class="btn" 
-              style="background: var(--accent); color: #fff;"
-              title="Voir la carte interactive"
-              aria-label="Accéder à la carte interactive"
-            >
-              🗺️ Vue carte
-            </a>
           </div>
         </div>
       </div>
@@ -313,7 +304,34 @@
         </table>
       </div>
 
-      <nav class="pager" aria-label="Navigation de pagination">
+      <!-- Sélecteur de taille de page -->
+      <div class="page-size-selector" style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <label for="page-size" style="font-weight: 500; color: #555;">Afficher :</label>
+        <select 
+          id="page-size" 
+          class="form-control" 
+          style="width: auto; padding: 6px 12px;"
+          aria-label="Nombre d'enregistrements par page"
+        >
+          <option value="10">10 par page</option>
+          <option value="25">25 par page</option>
+          <option value="50" selected>50 par page</option>
+          <option value="100">100 par page</option>
+          <option value="9999">Tous</option>
+        </select>
+        <span id="total-count" style="color: #888; font-size: 0.9em;" aria-live="polite">—</span>
+      </div>
+
+      <!-- Navigation de pagination -->
+      <nav class="pager" aria-label="Navigation de pagination" style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+        <button 
+          id="first" 
+          class="btn ghost" 
+          title="Première page"
+          aria-label="Première page"
+        >
+          ⏮
+        </button>
         <button 
           id="prev" 
           class="btn ghost" 
@@ -322,7 +340,8 @@
         >
           ◀
         </button>
-        <span id="pageinfo" aria-live="polite" aria-atomic="true">—</span>
+        <div id="page-numbers" style="display: flex; gap: 4px;" role="list" aria-label="Numéros de page"></div>
+        <span id="pageinfo" aria-live="polite" aria-atomic="true" style="min-width: 100px; text-align: center;">—</span>
         <button 
           id="next" 
           class="btn ghost" 
@@ -330,6 +349,14 @@
           aria-label="Page suivante"
         >
           ▶
+        </button>
+        <button 
+          id="last" 
+          class="btn ghost" 
+          title="Dernière page"
+          aria-label="Dernière page"
+        >
+          ⏭
         </button>
       </nav>
     </section>
@@ -491,113 +518,6 @@
           aria-label="Enregistrer l'article"
         >
           Enregistrer
-        </button>
-      </menu>
-    </form>
-  </dialog>
-
-  <!-- Modale : Édition d'article -->
-  <dialog 
-    id="edit-modal" 
-    class="dialog"
-    aria-labelledby="edit-modal-title"
-  >
-    <form id="edit-form" method="dialog">
-      <h3 id="edit-modal-title">✏️ Modifier l'article</h3>
-      <input type="hidden" id="edit-row-index">
-
-      <div class="grid">
-        <label for="e-annee">
-          Année
-          <input 
-            id="e-annee" 
-            type="number" 
-            min="1900" 
-            max="2100"
-            required 
-          />
-        </label>
-
-        <label for="e-numero">
-          Numéro
-          <input 
-            id="e-numero" 
-            type="text" 
-            required 
-          />
-        </label>
-
-        <label for="e-titre" style="grid-column: 1 / -1;">
-          Titre
-          <input 
-            id="e-titre" 
-            type="text" 
-            required 
-          />
-        </label>
-
-        <label for="e-pages">
-          Page(s)
-          <input 
-            id="e-pages" 
-            type="text" 
-            placeholder="12-15"
-            required 
-          />
-        </label>
-
-        <label for="e-auteurs" style="grid-column: 1 / -1;">
-          Auteur(s)
-          <input 
-            id="e-auteurs" 
-            type="text" 
-            placeholder="Séparez par des virgules"
-            required 
-          />
-        </label>
-
-        <label for="e-villes" style="grid-column: 1 / -1;">
-          Ville(s)
-          <input 
-            id="e-villes" 
-            type="text" 
-            placeholder="Séparez par des virgules"
-            required 
-          />
-        </label>
-
-        <label for="e-themes" style="grid-column: 1 / -1;">
-          Thème(s)
-          <input 
-            id="e-themes" 
-            type="text" 
-            placeholder="Séparez par des virgules"
-          />
-        </label>
-
-        <label for="e-epoque">
-          Époque
-          <input 
-            id="e-epoque" 
-            type="text" 
-            placeholder="Ex: XXe siècle"
-          />
-        </label>
-      </div>
-
-      <menu class="dialog-actions">
-        <button 
-          type="button"
-          id="edit-cancel" 
-          class="btn ghost"
-        >
-          Annuler
-        </button>
-        <button 
-          type="submit"
-          class="btn"
-        >
-          💾 Enregistrer
         </button>
       </menu>
     </form>

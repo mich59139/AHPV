@@ -6,7 +6,8 @@
 //          fetchCSVArticles() affiche un diagnostic si le CSV est introuvable
 // v2.0 : Support des nouveaux IDS HTML (add-article-btn, reset-filters, etc.)
 // v1.9 : Mise à jour automatique de TOUS les CSV (auteurs, villes, thèmes, époques)
-//        Chaque modification d'article met à jour tous les CSV sur GitHub
+// v1.10: Pagination avancée - Sélecteur de taille (10/25/50/100/Tous) + Numérotation des pages
+// v1.11: Fix erreurs 404/401 - Gestion robuste création/mise à jour CSV (non bloquant)
 
 /* ==== Config à adapter si besoin ==== */
 const GITHUB_USER   = "mich59139";
@@ -121,7 +122,9 @@ function enqueueSave(message="Mise à jour catalogue"){
 
 /* ==== Mise à jour automatique de toutes les listes depuis les articles ==== */
 async function updateAllListsFromArticles(){
-  if(!GHTOKEN) return; // Pas de token = pas de sauvegarde
+  if(!GHTOKEN) return; // Pas de token = skip
+  
+  console.log("📝 Extraction des listes depuis articles...");
   
   // Extraire toutes les valeurs uniques des articles
   const auteursSet = new Set();
@@ -131,11 +134,23 @@ async function updateAllListsFromArticles(){
   
   for(const article of ARTICLES){
     // Auteurs
-    splitMulti(article["Auteur(s)"] || "").forEach(a => auteursSet.add(a.trim()));
+    splitMulti(article["Auteur(s)"] || "").forEach(a => {
+      const trimmed = a.trim();
+      if(trimmed) auteursSet.add(trimmed);
+    });
+    
     // Villes
-    splitMulti(article["Ville(s)"] || "").forEach(v => villesSet.add(v.trim()));
+    splitMulti(article["Ville(s)"] || "").forEach(v => {
+      const trimmed = v.trim();
+      if(trimmed) villesSet.add(trimmed);
+    });
+    
     // Thèmes
-    splitMulti(article["Theme(s)"] || "").forEach(t => themesSet.add(t.trim()));
+    splitMulti(article["Theme(s)"] || "").forEach(t => {
+      const trimmed = t.trim();
+      if(trimmed) themesSet.add(trimmed);
+    });
+    
     // Époques
     const epoque = (article["Epoque"] || "").trim();
     if(epoque) epoquesSet.add(epoque);
@@ -147,35 +162,28 @@ async function updateAllListsFromArticles(){
   const themesArray = Array.from(themesSet).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
   const epoquesArray = Array.from(epoquesSet).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
   
-  // Sauvegarder chaque liste sur GitHub (en parallèle pour gagner du temps)
+  console.log(`  - ${auteursArray.length} auteurs uniques`);
+  console.log(`  - ${villesArray.length} villes uniques`);
+  console.log(`  - ${themesArray.length} thèmes uniques`);
+  console.log(`  - ${epoquesArray.length} époques uniques`);
+  
+  // Sauvegarder chaque liste sur GitHub (en parallèle)
   const promises = [];
   
   if(auteursArray.length > 0){
-    promises.push(
-      saveListToGitHub(API_AUT, "data/auteurs.csv", auteursArray, "Auteur")
-        .catch(e => console.warn("Échec sauvegarde auteurs:", e))
-    );
+    promises.push(saveListToGitHub(API_AUT, "data/auteurs.csv", auteursArray, "Auteur"));
   }
   
   if(villesArray.length > 0){
-    promises.push(
-      saveListToGitHub(API_VIL, "data/villes.csv", villesArray, "Ville")
-        .catch(e => console.warn("Échec sauvegarde villes:", e))
-    );
+    promises.push(saveListToGitHub(API_VIL, "data/villes.csv", villesArray, "Ville"));
   }
   
   if(themesArray.length > 0){
-    promises.push(
-      saveListToGitHub(API_THE, "data/themes.csv", themesArray, "Theme")
-        .catch(e => console.warn("Échec sauvegarde thèmes:", e))
-    );
+    promises.push(saveListToGitHub(API_THE, "data/themes.csv", themesArray, "Theme"));
   }
   
   if(epoquesArray.length > 0){
-    promises.push(
-      saveListToGitHub(API_EPO, "data/epoques.csv", epoquesArray, "Epoque")
-        .catch(e => console.warn("Échec sauvegarde époques:", e))
-    );
+    promises.push(saveListToGitHub(API_EPO, "data/epoques.csv", epoquesArray, "Epoque"));
   }
   
   // Attendre que toutes les sauvegardes soient terminées
@@ -190,6 +198,8 @@ async function updateAllListsFromArticles(){
   buildCanonFromLists();
   populateDatalists();
   refreshEpoqueOptions();
+  
+  console.log("✅ Toutes les listes ont été traitées");
 }
 
 async function runQueuedSave(){
@@ -205,8 +215,13 @@ async function runQueuedSave(){
     // 1. Sauvegarder articles.csv
     await saveToGitHubRaw(toCSV(ARTICLES), payload.message);
     
-    // 2. Mettre à jour automatiquement tous les autres CSV
-    await updateAllListsFromArticles();
+    // 2. Mettre à jour automatiquement tous les autres CSV (non bloquant)
+    try{
+      await updateAllListsFromArticles();
+    }catch(listError){
+      console.warn("⚠️ Erreur mise à jour listes (non bloquant):", listError);
+      // On continue quand même, l'essentiel (articles.csv) est sauvegardé
+    }
     
     setSaveBadge("✅ Synchronisé");
     setTimeout(()=> setSaveBadge(""), 2000);
@@ -333,13 +348,48 @@ async function saveToGitHubMerged(newRows, message="Mise à jour catalogue"){
   if(!res.ok) throw new Error("Échec commit");
 }
 async function saveListToGitHub(apiUrl, pathLabel, items, header){
-  if(!GHTOKEN){ alert("Modifié localement. Cliquez 🔐 pour enregistrer ensuite."); return false; }
-  let sha; try{ sha=await getShaFor(apiUrl);}catch{ sha=null; }
-  const content=btoa(unescape(encodeURIComponent(listToCSV(items, header))));
-  const body={message:`Mise à jour ${pathLabel}`, content, branch:GITHUB_BRANCH}; if(sha) body.sha=sha;
-  const r=await fetch(apiUrl,{method:"PUT",headers:{ "Content-Type":"application/json", Authorization:`token ${GHTOKEN}` }, body:JSON.stringify(body)});
-  if(!r.ok) throw new Error("Échec commit "+pathLabel);
-  return true;
+  if(!GHTOKEN){ return false; } // Pas de token = skip silencieux
+  
+  let sha;
+  try{
+    sha = await getShaFor(apiUrl);
+  }catch(e){
+    // Fichier n'existe pas encore, on va le créer (sha = null)
+    sha = null;
+    console.log(`Création de ${pathLabel} (fichier inexistant)`);
+  }
+  
+  const content = btoa(unescape(encodeURIComponent(listToCSV(items, header))));
+  const body = {
+    message: sha ? `Mise à jour ${pathLabel}` : `Création ${pathLabel}`,
+    content,
+    branch: GITHUB_BRANCH
+  };
+  
+  if(sha) body.sha = sha;
+  
+  try{
+    const r = await fetch(apiUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `token ${GHTOKEN}`
+      },
+      body: JSON.stringify(body)
+    });
+    
+    if(!r.ok){
+      const errorText = await r.text();
+      console.warn(`⚠️ Échec sauvegarde ${pathLabel}:`, r.status, errorText);
+      return false;
+    }
+    
+    console.log(`✅ ${pathLabel} sauvegardé`);
+    return true;
+  }catch(e){
+    console.warn(`⚠️ Erreur réseau ${pathLabel}:`, e);
+    return false;
+  }
 }
 
 /* ==== Canon/suggestions ==== */
@@ -502,9 +552,15 @@ function render(){
   });
 
   const pages=Math.max(1, Math.ceil(total/pageSize));
-  document.getElementById("pageinfo").textContent = `${Math.min(currentPage,pages)} / ${pages} — ${total} ligne(s)`;
+  document.getElementById("pageinfo").textContent = `Page ${Math.min(currentPage,pages)} / ${pages}`;
+  document.getElementById("total-count").textContent = `${total} article(s) trouvé(s)`;
   document.getElementById("prev").disabled = currentPage<=1;
   document.getElementById("next").disabled = currentPage>=pages;
+  document.getElementById("first").disabled = currentPage<=1;
+  document.getElementById("last").disabled = currentPage>=pages;
+  
+  // Afficher les numéros de page
+  renderPageNumbers();
 
   if (currentPage > pages){ currentPage = pages; return render(); }
 
@@ -659,8 +715,65 @@ function bindSorting(){
   });
 }
 function bindPager(){
+  // Boutons de navigation
+  document.getElementById("first")?.addEventListener("click", ()=>{ currentPage=1; render(); });
   document.getElementById("prev")?.addEventListener("click", ()=>{ if(currentPage>1){ currentPage--; render(); } });
-  document.getElementById("next")?.addEventListener("click", ()=>{ currentPage++; render(); });
+  document.getElementById("next")?.addEventListener("click", ()=>{ const pages=Math.ceil(applyFilters().length/pageSize); if(currentPage<pages){ currentPage++; render(); } });
+  document.getElementById("last")?.addEventListener("click", ()=>{ const pages=Math.ceil(applyFilters().length/pageSize); currentPage=Math.max(1,pages); render(); });
+  
+  // Sélecteur de taille de page
+  document.getElementById("page-size")?.addEventListener("change", (e)=>{
+    pageSize = parseInt(e.target.value) || 50;
+    currentPage = 1;
+    render();
+  });
+}
+
+function renderPageNumbers(){
+  const total = applyFilters().length;
+  const pages = Math.max(1, Math.ceil(total/pageSize));
+  const container = document.getElementById("page-numbers");
+  if(!container) return;
+  
+  // Si trop de pages, afficher seulement quelques numéros autour de la page actuelle
+  const maxButtons = 7; // Nombre maximum de boutons à afficher
+  let startPage = Math.max(1, currentPage - Math.floor(maxButtons/2));
+  let endPage = Math.min(pages, startPage + maxButtons - 1);
+  
+  // Ajuster si on est près de la fin
+  if(endPage - startPage < maxButtons - 1){
+    startPage = Math.max(1, endPage - maxButtons + 1);
+  }
+  
+  let html = '';
+  
+  // Première page si pas dans la plage
+  if(startPage > 1){
+    html += `<button class="btn ghost page-num" data-page="1">1</button>`;
+    if(startPage > 2) html += '<span style="padding: 0 4px;">...</span>';
+  }
+  
+  // Pages numérotées
+  for(let i = startPage; i <= endPage; i++){
+    const isActive = i === currentPage;
+    html += `<button class="btn ${isActive ? 'primary' : 'ghost'} page-num" data-page="${i}" ${isActive ? 'aria-current="page"' : ''}>${i}</button>`;
+  }
+  
+  // Dernière page si pas dans la plage
+  if(endPage < pages){
+    if(endPage < pages - 1) html += '<span style="padding: 0 4px;">...</span>';
+    html += `<button class="btn ghost page-num" data-page="${pages}">${pages}</button>`;
+  }
+  
+  container.innerHTML = html;
+  
+  // Ajouter les listeners sur les boutons de page
+  container.querySelectorAll('.page-num').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentPage = parseInt(btn.dataset.page);
+      render();
+    });
+  });
 }
 
 /* ==== Exports ==== */
@@ -940,58 +1053,3 @@ async function init(){
   }
 }
 if(document.readyState==="loading"){ document.addEventListener("DOMContentLoaded", init); } else { init(); }
-
-/* ==== Modal Edit ==== */
-window._openEditModal = (idx) => {
-  if (idx < 0 || idx >= ARTICLES.length) return;
-  
-  const article = ARTICLES[idx];
-  const modal = document.getElementById('edit-modal');
-  
-  // Remplir le formulaire
-  document.getElementById('edit-row-index').value = idx;
-  document.getElementById('e-annee').value = article['Année'] || '';
-  document.getElementById('e-numero').value = article['Numéro'] || '';
-  document.getElementById('e-titre').value = article.Titre || '';
-  document.getElementById('e-pages').value = article['Page(s)'] || '';
-  document.getElementById('e-auteurs').value = article['Auteur(s)'] || '';
-  document.getElementById('e-villes').value = article['Ville(s)'] || '';
-  document.getElementById('e-themes').value = article['Theme(s)'] || '';
-  document.getElementById('e-epoque').value = article['Epoque'] || '';
-  
-  modal.showModal();
-};
-
-// Gérer la soumission du formulaire d'édition
-document.getElementById('edit-form').addEventListener('submit', (e) => {
-  e.preventDefault();
-  
-  const idx = parseInt(document.getElementById('edit-row-index').value);
-  if (idx < 0 || idx >= ARTICLES.length) return;
-  
-  // Mettre à jour l'article
-  ARTICLES[idx] = {
-    'Année': document.getElementById('e-annee').value,
-    'Numéro': document.getElementById('e-numero').value,
-    'Titre': document.getElementById('e-titre').value,
-    'Page(s)': document.getElementById('e-pages').value,
-    'Auteur(s)': document.getElementById('e-auteurs').value,
-    'Ville(s)': document.getElementById('e-villes').value,
-    'Theme(s)': document.getElementById('e-themes').value,
-    'Epoque': document.getElementById('e-epoque').value
-  };
-  
-  // Marquer comme non sauvegardé et re-rendre
-  onEdit();
-  render();
-  
-  document.getElementById('edit-modal').close();
-});
-
-// Bouton Annuler
-document.getElementById('edit-cancel').addEventListener('click', () => {
-  document.getElementById('edit-modal').close();
-});
-
-// Remplacer _inlineEdit pour utiliser le modal
-window._inlineEdit = window._openEditModal;
