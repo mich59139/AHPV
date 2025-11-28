@@ -8,6 +8,7 @@
 // v1.9 : Mise à jour automatique de TOUS les CSV (auteurs, villes, thèmes, époques)
 // v1.10: Pagination avancée - Sélecteur de taille (10/25/50/100/Tous) + Numérotation des pages
 // v1.11: Fix erreurs 404/401 - Gestion robuste création/mise à jour CSV (non bloquant)
+// v1.13: HOTFIX - Désactivation temporaire mise à jour CSV secondaires (404/401)
 
 /* ==== Config à adapter si besoin ==== */
 const GITHUB_USER   = "mich59139";
@@ -215,13 +216,18 @@ async function runQueuedSave(){
     // 1. Sauvegarder articles.csv
     await saveToGitHubRaw(toCSV(ARTICLES), payload.message);
     
-    // 2. Mettre à jour automatiquement tous les autres CSV (non bloquant)
+    // 2. Mettre à jour automatiquement tous les autres CSV (TEMPORAIREMENT DÉSACTIVÉ)
+    // RAISON : Fichiers CSV secondaires n'existent pas encore sur GitHub
+    // RÉACTIVER quand les fichiers seront créés manuellement
+    /*
     try{
       await updateAllListsFromArticles();
     }catch(listError){
       console.warn("⚠️ Erreur mise à jour listes (non bloquant):", listError);
       // On continue quand même, l'essentiel (articles.csv) est sauvegardé
     }
+    */
+    console.log("ℹ️ Mise à jour CSV secondaires désactivée (fichiers inexistants)");
     
     setSaveBadge("✅ Synchronisé");
     setTimeout(()=> setSaveBadge(""), 2000);
@@ -631,6 +637,12 @@ function normalizeNumeroInput(s){
 window._openAddModal=()=>{
   const d=document.getElementById("add-modal");
   document.getElementById("add-form")?.reset();
+  
+  // Pré-remplir l'année en cours
+  const currentYear = new Date().getFullYear();
+  const yearInput = document.getElementById("a-annee");
+  if(yearInput && !yearInput.value) yearInput.value = currentYear;
+  
   populateDatalists();
   refreshAddNumeroOptions();
   d?.showModal();
