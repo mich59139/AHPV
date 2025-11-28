@@ -4,7 +4,9 @@
 //          Sauvegarde fluide (file d'attente) + badge d'état
 //          FIX suppression/modif : on utilise l'index source (_i) même avec filtre/tri/pagination
 //          fetchCSVArticles() affiche un diagnostic si le CSV est introuvable
-// v2.0 : Support des nouveaux IDs HTML (add-article-btn, reset-filters, etc.)
+// v2.0 : Support des nouveaux IDS HTML (add-article-btn, reset-filters, etc.)
+// v1.9 : Mise à jour automatique de TOUS les CSV (auteurs, villes, thèmes, époques)
+//        Chaque modification d'article met à jour tous les CSV sur GitHub
 
 /* ==== Config à adapter si besoin ==== */
 const GITHUB_USER   = "mich59139";
@@ -117,6 +119,79 @@ function enqueueSave(message="Mise à jour catalogue"){
   setSaveBadge("💾 Enregistrement…");
 }
 
+/* ==== Mise à jour automatique de toutes les listes depuis les articles ==== */
+async function updateAllListsFromArticles(){
+  if(!GHTOKEN) return; // Pas de token = pas de sauvegarde
+  
+  // Extraire toutes les valeurs uniques des articles
+  const auteursSet = new Set();
+  const villesSet = new Set();
+  const themesSet = new Set();
+  const epoquesSet = new Set();
+  
+  for(const article of ARTICLES){
+    // Auteurs
+    splitMulti(article["Auteur(s)"] || "").forEach(a => auteursSet.add(a.trim()));
+    // Villes
+    splitMulti(article["Ville(s)"] || "").forEach(v => villesSet.add(v.trim()));
+    // Thèmes
+    splitMulti(article["Theme(s)"] || "").forEach(t => themesSet.add(t.trim()));
+    // Époques
+    const epoque = (article["Epoque"] || "").trim();
+    if(epoque) epoquesSet.add(epoque);
+  }
+  
+  // Convertir en tableaux triés
+  const auteursArray = Array.from(auteursSet).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
+  const villesArray = Array.from(villesSet).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
+  const themesArray = Array.from(themesSet).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
+  const epoquesArray = Array.from(epoquesSet).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
+  
+  // Sauvegarder chaque liste sur GitHub (en parallèle pour gagner du temps)
+  const promises = [];
+  
+  if(auteursArray.length > 0){
+    promises.push(
+      saveListToGitHub(API_AUT, "data/auteurs.csv", auteursArray, "Auteur")
+        .catch(e => console.warn("Échec sauvegarde auteurs:", e))
+    );
+  }
+  
+  if(villesArray.length > 0){
+    promises.push(
+      saveListToGitHub(API_VIL, "data/villes.csv", villesArray, "Ville")
+        .catch(e => console.warn("Échec sauvegarde villes:", e))
+    );
+  }
+  
+  if(themesArray.length > 0){
+    promises.push(
+      saveListToGitHub(API_THE, "data/themes.csv", themesArray, "Theme")
+        .catch(e => console.warn("Échec sauvegarde thèmes:", e))
+    );
+  }
+  
+  if(epoquesArray.length > 0){
+    promises.push(
+      saveListToGitHub(API_EPO, "data/epoques.csv", epoquesArray, "Epoque")
+        .catch(e => console.warn("Échec sauvegarde époques:", e))
+    );
+  }
+  
+  // Attendre que toutes les sauvegardes soient terminées
+  await Promise.all(promises);
+  
+  // Mettre à jour les listes locales pour l'UI
+  LISTS.auteurs = auteursArray;
+  LISTS.villes = villesArray;
+  LISTS.themes = themesArray;
+  LISTS.epoques = epoquesArray;
+  
+  buildCanonFromLists();
+  populateDatalists();
+  refreshEpoqueOptions();
+}
+
 async function runQueuedSave(){
   const payload = SAVE_Q.pending; SAVE_Q.pending = null; SAVE_Q.timer = null;
   if (!payload) return;
@@ -127,7 +202,12 @@ async function runQueuedSave(){
   }
   SAVE_Q.running = true;
   try{
+    // 1. Sauvegarder articles.csv
     await saveToGitHubRaw(toCSV(ARTICLES), payload.message);
+    
+    // 2. Mettre à jour automatiquement tous les autres CSV
+    await updateAllListsFromArticles();
+    
     setSaveBadge("✅ Synchronisé");
     setTimeout(()=> setSaveBadge(""), 2000);
   }catch(e){

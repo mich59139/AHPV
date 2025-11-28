@@ -1,4 +1,7 @@
 // ============================================
+// AHPV - Carte Interactive
+// v1.9 - Compatible avec système auto-update des CSV
+// ============================================
 // Configuration & Variables globales
 // ============================================
 
