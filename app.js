@@ -8,7 +8,8 @@
 // v1.9 : Mise à jour automatique de TOUS les CSV (auteurs, villes, thèmes, époques)
 // v1.10: Pagination avancée - Sélecteur de taille (10/25/50/100/Tous) + Numérotation des pages
 // v1.11: Fix erreurs 404/401 - Gestion robuste création/mise à jour CSV (non bloquant)
-// v1.14: Messages console clairs pour 404 non critiques (fichiers optionnels)
+// v1.15: Bouton Carte dans header + Améliorations responsive mobile
+// v1.16: Fix édition inline (simple clic) + CSS mobile optimisé + Bouton Carte pleine largeur
 
 /* ==== Config à adapter si besoin ==== */
 const GITHUB_USER   = "mich59139";
@@ -575,7 +576,10 @@ function render(){
 }
 
 /* ==== Inline edit ==== */
-window._editRow=(idx)=>{ try{ if(matchMedia("(max-width:800px)").matches) _inlineEdit(idx); }catch{ _inlineEdit(idx); } };
+window._editRow=(idx)=>{ 
+  // Toujours utiliser l'édition inline (plus fiable)
+  window._inlineEdit(idx);
+};
 window._inlineEdit=(idx)=>{
   editingIndex=idx; render();
   setTimeout(()=>document.getElementById("ei-titre")?.focus(),0);

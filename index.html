@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
   
   <!-- SEO -->
-  <title>AHPV – Catalogue des Articles v1.14</title>
+  <title>AHPV – Catalogue des Articles v1.16</title>
   <meta name="description" content="Catalogue des articles de l'association AHPV - Amis de l'Histoire du Pays Vizillois. Recherchez et explorez nos publications historiques." />
   <meta name="keywords" content="histoire, Vizille, Isère, patrimoine, articles, publications, AHPV" />
   <meta name="author" content="AHPV - Amis de l'Histoire du Pays Vizillois" />
@@ -86,6 +86,15 @@
             >
               ❓ Aide
             </button>
+            <a 
+              href="carte.html" 
+              class="btn primary" 
+              title="Voir la carte interactive"
+              aria-label="Voir la carte interactive"
+              style="text-decoration: none;"
+            >
+              🗺️ Carte
+            </a>
           </div>
         </div>
       </div>
@@ -866,6 +875,42 @@
 
     /* Mobile responsive */
     @media (max-width: 720px) {
+      /* Header responsive */
+      .site-header .wrap {
+        padding: 12px 16px;
+      }
+      
+      .site-header .brand {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      
+      .site-header .brand img {
+        max-height: 40px;
+      }
+      
+      .site-header .title h1 {
+        font-size: 1.3rem;
+      }
+      
+      /* Badges responsive */
+      .badges {
+        flex-wrap: wrap;
+        gap: 8px !important;
+        font-size: 0.85rem;
+      }
+      
+      .badges .sep {
+        display: none;
+      }
+      
+      .badges button {
+        font-size: 0.85rem;
+        padding: 6px 10px;
+      }
+      
+      /* Toast */
       .toast-container {
         top: 60px;
         right: 10px;
@@ -873,6 +918,17 @@
         max-width: none;
       }
 
+      /* Filtres responsive */
+      .panel .row {
+        flex-direction: column;
+        gap: 12px;
+      }
+      
+      .panel .field {
+        width: 100%;
+      }
+
+      /* Actions responsive */
       .row.actions {
         flex-direction: column;
         gap: 10px;
@@ -886,8 +942,63 @@
         gap: 8px;
       }
 
+      /* Tableau responsive */
+      table {
+        font-size: 0.9rem;
+      }
+      
+      table th,
+      table td {
+        padding: 8px 6px;
+      }
+      
+      /* Masquer certaines colonnes sur mobile */
+      table th:nth-child(4),
+      table td:nth-child(4),
+      table th:nth-child(8),
+      table td:nth-child(8) {
+        display: none; /* Masquer Page(s) et Période sur mobile */
+      }
+      
+      /* Pagination responsive */
+      .page-size-selector {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 8px !important;
+      }
+      
+      .pager {
+        flex-wrap: wrap;
+        justify-content: center !important;
+        gap: 4px !important;
+      }
+      
+      .pager button,
+      .pager .page-num {
+        min-width: 36px;
+        padding: 6px 8px !important;
+        font-size: 0.9rem;
+      }
+      
+      #pageinfo {
+        width: 100%;
+        text-align: center;
+        margin-top: 8px;
+      }
+      
+      #page-numbers {
+        flex-wrap: wrap;
+      }
+
+      /* Modales responsive */
       .dialog {
         width: calc(100vw - 20px);
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      
+      .dialog .form-row {
+        grid-template-columns: 1fr !important;
       }
     }
   </style>
