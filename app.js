@@ -8,7 +8,7 @@
 // v1.9 : Mise à jour automatique de TOUS les CSV (auteurs, villes, thèmes, époques)
 // v1.10: Pagination avancée - Sélecteur de taille (10/25/50/100/Tous) + Numérotation des pages
 // v1.11: Fix erreurs 404/401 - Gestion robuste création/mise à jour CSV (non bloquant)
-// v1.13: HOTFIX - Désactivation temporaire mise à jour CSV secondaires (404/401)
+// v1.14: Messages console clairs pour 404 non critiques (fichiers optionnels)
 
 /* ==== Config à adapter si besoin ==== */
 const GITHUB_USER   = "mich59139";
@@ -1031,11 +1031,50 @@ function bindNewButtons(){
 async function init(){
   try{
     showLoading(true);
-    try{ ARTICLES      = await fetchCSVArticles(); }catch(e){ console.error(e); ARTICLES=[]; }
-    try{ LISTS.auteurs = await fetchCSVList(RAW_AUT, AUTHORS_PATH); }catch{ LISTS.auteurs=[]; }
-    try{ LISTS.villes  = await fetchCSVList(RAW_VIL, CITIES_PATH); }catch{ LISTS.villes=[]; }
-    try{ LISTS.themes  = await fetchCSVList(RAW_THE, THEMES_PATH); }catch{ LISTS.themes=[]; }
-    try{ LISTS.epoques = await fetchCSVList(RAW_EPO, EPOCHS_PATH); }catch{ LISTS.epoques=[]; }
+    console.log("📋 Chargement des données...");
+    
+    try{ 
+      ARTICLES = await fetchCSVArticles();
+      console.log(`✅ ${ARTICLES.length} articles chargés`);
+    }catch(e){ 
+      console.error("❌ Erreur chargement articles:", e); 
+      ARTICLES=[]; 
+    }
+    
+    // Chargement des listes (optionnel, non bloquant)
+    console.log("📝 Chargement des listes secondaires (non critique)...");
+    try{ 
+      LISTS.auteurs = await fetchCSVList(RAW_AUT, AUTHORS_PATH);
+      console.log(`✅ ${LISTS.auteurs.length} auteurs chargés`);
+    }catch{ 
+      console.log("ℹ️ auteurs.csv non trouvé (utilisation des données articles)");
+      LISTS.auteurs=[]; 
+    }
+    
+    try{ 
+      LISTS.villes = await fetchCSVList(RAW_VIL, CITIES_PATH);
+      console.log(`✅ ${LISTS.villes.length} villes chargées`);
+    }catch{ 
+      console.log("ℹ️ villes.csv non trouvé (utilisation des données articles)");
+      LISTS.villes=[]; 
+    }
+    
+    try{ 
+      LISTS.themes = await fetchCSVList(RAW_THE, THEMES_PATH);
+      console.log(`✅ ${LISTS.themes.length} thèmes chargés`);
+    }catch{ 
+      console.log("ℹ️ themes.csv non trouvé (utilisation des données articles)");
+      LISTS.themes=[]; 
+    }
+    
+    try{ 
+      LISTS.epoques = await fetchCSVList(RAW_EPO, EPOCHS_PATH);
+      console.log(`✅ ${LISTS.epoques.length} époques chargées`);
+    }catch{ 
+      console.log("ℹ️ epoques.csv non trouvé (utilisation des données articles)");
+      LISTS.epoques=[]; 
+    }
+    
     if(LISTS.auteurs.length || LISTS.villes.length) buildCanonFromLists(); else buildCanonFromArticles();
     populateDatalists();
 
