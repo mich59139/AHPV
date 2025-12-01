@@ -1,12 +1,12 @@
-
 // AHPV — Catalogue + mini-éditeur des listes + exports "Tout"
 // Ajouts : Époques (datalist + filtre) • "Nouveau numéro…" + pré-rempli "Mémoire n°"
 //          Anti-cache sur fetch • Datalists mises à jour en direct depuis "Listes"
 //          Sauvegarde fluide (file d'attente) + badge d'état
 //          FIX suppression/modif : on utilise l'index source (_i) même avec filtre/tri/pagination
 //          fetchCSVArticles() affiche un diagnostic si le CSV est introuvable
-// v2.0 : Support des nouveaux IDs HTML (add-article-btn, reset-filters, etc.)
+// v2.x : Support des nouveaux IDs HTML (add-article-btn, reset-filters, etc.)
 //        Époques dérivées des articles si epoques.csv manquant ou vide
+//        Message "Aucun article ne correspond aux filtres" si page vide
 
 /* ==== Config à adapter si besoin ==== */
 const GITHUB_USER   = "mich59139";
@@ -172,7 +172,7 @@ async function fetchCSVList(url, labelForLog){
   }
 }
 
-/* ==== Normalisation des champs auteurs / villes / thèmes / époques ==== */
+/* ==== Normalisation des champs auteurs / villes ==== */
 function normaliseMulti(str, canonMap){
   if(!str) return "";
   const parts = str
@@ -252,42 +252,55 @@ function render(){
   const page=rows.slice(start, start+pageSize);
 
   const tbody=document.getElementById("tbody");
-  tbody.innerHTML=page.map((r)=>{
-    const i=r._i; // index réel dans ARTICLES
-    if(editingIndex!==i){
-      return `
-      <tr class="row" ondblclick="window._inlineEdit?.(${i})" onclick="window._editRow?.(${i})">
-        <td data-label="Année"  class="col-annee">${r["Année"]||""}</td>
-        <td data-label="Numéro" class="col-numero">${r["Numéro"]||""}</td>
-        <td data-label="Titre"  class="col-titre">${r["Titre"]||""}</td>
-        <td data-label="Page(s)">${r["Page(s)"]||""}</td>
-        <td data-label="Auteur(s)">${r["Auteur(s)"]||""}</td>
-        <td data-label="Ville(s)">${r["Ville(s)"]||""}</td>
-        <td data-label="Thème(s)">${r["Theme(s)"]||""}</td>
-        <td data-label="Période">${r["Epoque"]||""}</td>
-        <td class="actions">
-          <button class="edit" onclick="window._inlineEdit?.(${i})" aria-label="Modifier">✎</button>
-          <button class="del"  onclick="window._deleteRow?.(${i})" aria-label="Supprimer">🗑</button>
+  if (!tbody) return;
+
+  if (!page.length) {
+    // Aucun résultat pour les filtres actuels
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="9" style="text-align:center; padding:20px; font-style:italic;">
+          Aucun article ne correspond aux filtres actuels
+          (catalogue complet : ${ARTICLES.length} article(s)).
         </td>
       </tr>`;
-    }else{
-      return `
-      <tr class="row editing">
-        <td><input id="ei-annee"   autocomplete="off" value="${r["Année"]||""}" /></td>
-        <td><input id="ei-numero"  autocomplete="off" value="${r["Numéro"]||""}" /></td>
-        <td><input id="ei-titre"   autocomplete="off" value="${r["Titre"]||""}" /></td>
-        <td><input id="ei-pages"   autocomplete="off" value="${r["Page(s)"]||""}" /></td>
-        <td><input id="ei-auteurs" autocomplete="off" value="${r["Auteur(s)"]||""}" /></td>
-        <td><input id="ei-villes"  autocomplete="off" value="${r["Ville(s)"]||""}" /></td>
-        <td><input id="ei-themes"  autocomplete="off" value="${r["Theme(s)"]||""}" /></td>
-        <td><input id="ei-epoque"  autocomplete="off" value="${r["Epoque"]||""}" /></td>
-        <td class="actions">
-          <button class="save" onclick="window._inlineSave?.()" aria-label="Enregistrer">💾</button>
-          <button class="cancel" onclick="window._inlineCancel?.()" aria-label="Annuler">✖</button>
-        </td>
-      </tr>`;
-    }
-  }).join("");
+  } else {
+    tbody.innerHTML=page.map((r)=>{
+      const i=r._i; // index réel dans ARTICLES
+      if(editingIndex!==i){
+        return `
+        <tr class="row" ondblclick="window._inlineEdit?.(${i})" onclick="window._editRow?.(${i})">
+          <td data-label="Année"  class="col-annee">${r["Année"]||""}</td>
+          <td data-label="Numéro" class="col-numero">${r["Numéro"]||""}</td>
+          <td data-label="Titre"  class="col-titre">${r["Titre"]||""}</td>
+          <td data-label="Page(s)">${r["Page(s)"]||""}</td>
+          <td data-label="Auteur(s)">${r["Auteur(s)"]||""}</td>
+          <td data-label="Ville(s)">${r["Ville(s)"]||""}</td>
+          <td data-label="Thème(s)">${r["Theme(s)"]||""}</td>
+          <td data-label="Période">${r["Epoque"]||""}</td>
+          <td class="actions">
+            <button class="edit" onclick="window._inlineEdit?.(${i})" aria-label="Modifier">✎</button>
+            <button class="del"  onclick="window._deleteRow?.(${i})" aria-label="Supprimer">🗑</button>
+          </td>
+        </tr>`;
+      }else{
+        return `
+        <tr class="row editing">
+          <td><input id="ei-annee"   autocomplete="off" value="${r["Année"]||""}" /></td>
+          <td><input id="ei-numero"  autocomplete="off" value="${r["Numéro"]||""}" /></td>
+          <td><input id="ei-titre"   autocomplete="off" value="${r["Titre"]||""}" /></td>
+          <td><input id="ei-pages"   autocomplete="off" value="${r["Page(s)"]||""}" /></td>
+          <td><input id="ei-auteurs" autocomplete="off" value="${r["Auteur(s)"]||""}" /></td>
+          <td><input id="ei-villes"  autocomplete="off" value="${r["Ville(s)"]||""}" /></td>
+          <td><input id="ei-themes"  autocomplete="off" value="${r["Theme(s)"]||""}" /></td>
+          <td><input id="ei-epoque"  autocomplete="off" value="${r["Epoque"]||""}" /></td>
+          <td class="actions">
+            <button class="save" onclick="window._inlineSave?.()" aria-label="Enregistrer">💾</button>
+            <button class="cancel" onclick="window._inlineCancel?.()" aria-label="Annuler">✖</button>
+          </td>
+        </tr>`;
+      }
+    }).join("");
+  }
 
   const pages=Math.max(1, Math.ceil(total/pageSize));
   document.getElementById("pageinfo").textContent = `${Math.min(currentPage,pages)} / ${pages} — ${total} ligne(s)`;
@@ -741,16 +754,25 @@ async function init(){
 
     // Époques :
     // - si epoques.csv existe et contient des valeurs : on les utilise
-    // - sinon : on dérive automatiquement les époques à partir des articles (comme avant)
+    // - sinon : on dérive automatiquement les époques à partir des articles
     let epoques = Array.isArray(epoquesFile) ? epoquesFile : [];
+
     if (!epoques.length) {
+      const allEpochValues = ARTICLES.map(r => {
+        const raw =
+          r["Epoque"] ??
+          r["Époque"] ??
+          r["Période"] ??
+          r["Période(s)"] ??
+          "";
+        // remplace les espaces insécables par des espaces normaux, puis trim
+        return String(raw).replace(/\u00A0/g, " ").trim();
+      });
+
       epoques = Array.from(
-        new Set(
-          ARTICLES
-            .map(r => (r["Epoque"] || "").trim())
-            .filter(Boolean)
-        )
-      ).sort((a,b) => a.localeCompare(b,"fr",{numeric:true}));
+        new Set(allEpochValues.filter(v => v && v.length > 0))
+      ).sort((a, b) => a.localeCompare(b, "fr", { numeric: true }));
+
       console.log(`💡 ${epoques.length} époques dérivées des articles`);
     } else {
       console.log(`✅ ${epoques.length} époques chargées depuis epoques.csv`);
