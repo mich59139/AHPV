@@ -13,7 +13,6 @@ const CONFIG = {
 
 // Coordonnées GPS des principales villes
 const VILLE_COORDINATES = {
-   const VILLE_COORDINATES = {
   'Allemond (38114)': [45.132, 6.040],
   "Bourg d'Oisans": [45.056, 6.030],
   'Bresson': [45.139, 5.740],
