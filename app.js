@@ -1,3 +1,4 @@
+
 // AHPV — Catalogue + mini-éditeur des listes + exports "Tout"
 // Ajouts : Époques (datalist + filtre) • "Nouveau numéro…" + pré-rempli "Mémoire n°"
 //          Anti-cache sur fetch • Datalists mises à jour en direct depuis "Listes"
@@ -5,6 +6,7 @@
 //          FIX suppression/modif : on utilise l'index source (_i) même avec filtre/tri/pagination
 //          fetchCSVArticles() affiche un diagnostic si le CSV est introuvable
 // v2.0 : Support des nouveaux IDs HTML (add-article-btn, reset-filters, etc.)
+//        Époques dérivées des articles si epoques.csv manquant ou vide
 
 /* ==== Config à adapter si besoin ==== */
 const GITHUB_USER   = "mich59139";
@@ -162,7 +164,10 @@ async function fetchCSVList(url, labelForLog){
     return uniq(data);
   }catch(e){
     console.warn(`⚠ Impossible de charger ${labelForLog} :`, e);
-    toast(`ℹ ${labelForLog} non disponibles (fichier manquant ?).`);
+    // Pour époques, c'est vraiment optionnel : pas de toast bloquant
+    if (labelForLog !== "époques") {
+      toast(`ℹ ${labelForLog} non disponibles (fichier manquant ?).`);
+    }
     return [];
   }
 }
@@ -721,7 +726,7 @@ async function saveListEditor(){
 /* ==== Initialisation ==== */
 async function init(){
   try{
-    const [rows, auteurs, villes, themes, epoques] = await Promise.all([
+    const [rows, auteurs, villes, themes, epoquesFile] = await Promise.all([
       fetchCSVArticles(),
       fetchCSVList(RAW_AUTH,"auteurs"),
       fetchCSVList(RAW_CITY,"villes"),
@@ -733,6 +738,23 @@ async function init(){
     LISTS.auteurs = auteurs;
     LISTS.villes  = villes;
     LISTS.themes  = themes;
+
+    // Époques :
+    // - si epoques.csv existe et contient des valeurs : on les utilise
+    // - sinon : on dérive automatiquement les époques à partir des articles (comme avant)
+    let epoques = Array.isArray(epoquesFile) ? epoquesFile : [];
+    if (!epoques.length) {
+      epoques = Array.from(
+        new Set(
+          ARTICLES
+            .map(r => (r["Epoque"] || "").trim())
+            .filter(Boolean)
+        )
+      ).sort((a,b) => a.localeCompare(b,"fr",{numeric:true}));
+      console.log(`💡 ${epoques.length} époques dérivées des articles`);
+    } else {
+      console.log(`✅ ${epoques.length} époques chargées depuis epoques.csv`);
+    }
     LISTS.epoques = epoques;
 
     populateDatalist("dl-auteurs", LISTS.auteurs);
@@ -771,7 +793,6 @@ async function init(){
         e.preventDefault();
         addRowFromForm(addForm);
       });
-      // préremplir numéro quand l'année change
       const aYear=addForm.querySelector("#a-annee");
       if(aYear){
         aYear.addEventListener("change", refreshAddNumeroOptions);
