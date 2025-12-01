@@ -4,320 +4,233 @@
 //          Sauvegarde fluide (file d'attente) + badge d'état
 //          FIX suppression/modif : on utilise l'index source (_i) même avec filtre/tri/pagination
 //          fetchCSVArticles() affiche un diagnostic si le CSV est introuvable
-// v2.x : Support des nouveaux IDs HTML (add-article-btn, reset-filters, etc.)
-//        Époques dérivées des articles si epoques.csv manquant ou vide
-//        Message "Aucun article ne correspond aux filtres" si page vide
-//        *** Nouveau : détection automatique du séparateur (',' ou ';') + parsing CSV avec guillemets ***
+// v2.0 : Support des nouveaux IDs HTML (add-article-btn, reset-filters, etc.)
 
 /* ==== Config à adapter si besoin ==== */
 const GITHUB_USER   = "mich59139";
 const GITHUB_REPO   = "AHPV";
 const GITHUB_BRANCH = "main";                 // ← mets "gh-pages" si besoin
-const CSV_PATH      = "data/articles.csv";    // ← nom EXACT du fichier articles
+const CSV_PATH      = "data/articles.csv";    // ← nom EXACT du fichier CSV
 const AUTHORS_PATH  = "data/auteurs.csv";
 const CITIES_PATH   = "data/villes.csv";
 const THEMES_PATH   = "data/themes.csv";
-const EPOCHS_PATH   = "data/epoques.csv";
+const EPOQUES_PATH  = "data/epoques.csv";     // peut ne pas exister, on gère l'erreur
 
-/* URLs */
-const RAW_ART   = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${CSV_PATH}`;
-const RAW_AUTH  = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${AUTHORS_PATH}`;
-const RAW_CITY  = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${CITIES_PATH}`;
-const RAW_THEME = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${THEMES_PATH}`;
-const RAW_EPOCH = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${EPOCHS_PATH}`;
-const API_ART   = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${CSV_PATH}`;
-const API_AUTH  = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${AUTHORS_PATH}`;
-const API_CITY  = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${CITIES_PATH}`;
-const API_THEME = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${THEMES_PATH}`;
-const API_EPOCH = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${EPOCHS_PATH}`;
-
-/* Auth */
-let GHTOKEN = localStorage.getItem("ghtoken") || "";
-
-/* État global */
-let ARTICLES = [];          // catalogue complet
-let FILTERS  = {            // filtres actifs
-  text: "",
-  annee: "",
-  numero: "",
-  ville: "",
-  theme: "",
-  epoque: ""
-};
-let pageSize     = 25;
-let currentPage  = 1;
-let editingIndex = -1;      // index source (_i) en édition inline
-let SORT         = { col: "annee", dir: 1 }; // tri simple
-
-// Listes (auteurs, villes, thèmes, époques)
-const LISTS = {
-  auteurs: [],
-  villes:  [],
-  themes:  [],
-  epoques: []
-};
-
-// Formes canoniques pour normaliser
-const CANON = {
-  auteurs: new Map(), // deburr(nom) → forme canonique
-  villes:  new Map()
-};
-
-// File d'attente de sauvegarde
+/* ==== Variables globales ==== */
+let ARTICLES   = [];
+let FILTER_YEAR   = "";
+let FILTER_NUM    = "";
+let FILTER_EPOQUE = "";
+let QUERY  = "";
+let sortCol = null;
+let sortDir = "asc";
+let currentPage=1, pageSize=50;
+let editingIndex=-1;
+let GHTOKEN = null;
+let IS_SAVING = false;
 let SAVE_QUEUE = [];
-let IS_SAVING  = false;
+let LAST_SAVE_TIME = 0;
 let AUTO_SAVE_SILENT = false;
 
-// Séparateur CSV détecté (';' ou ','), par défaut virgule (ton fichier actuel)
-let CSV_DELIM = ",";
+let LISTS = { auteurs:[], villes:[], themes:[], epoques:[] };
+let CANON   = { auteurs:new Map(), villes:new Map(), themes:new Map(), epoques:new Map() };
 
 /* ==== Utilitaires ==== */
-function deburr(str){
-  if(!str) return "";
-  return str
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g,"")
-    .toLowerCase();
-}
-function uniq(arr){
-  return Array.from(new Set(arr.filter(Boolean)));
-}
-function debounce(fn, delay=400){
+function debounce(fn, delay=300){
   let t;
   return (...args)=>{
     clearTimeout(t);
-    t=setTimeout(()=>fn(...args), delay);
+    t=setTimeout(()=>fn(...args),delay);
   };
 }
-function toast(msg){
-  const el=document.getElementById("toast");
-  if(!el){ alert(msg); return; }
-  el.textContent=msg;
-  el.classList.add("show");
-  setTimeout(()=>el.classList.remove("show"),3500);
+function uniqSorted(arr){
+  return Array.from(new Set(arr.filter(Boolean))).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
 }
-
-/* ==== CSV helpers ==== */
-
-// découpe UNE ligne CSV en tenant compte des guillemets et du séparateur
-function splitCSVLine(line, delimiter){
-  const result = [];
-  let cur = "";
-  let inQuotes = false;
+function fetchText(url){
+  const bust = (url.includes("?") ? "&" : "?") + "_ts="+Date.now();
+  return fetch(url + bust).then(r=>{
+    if(!r.ok) throw new Error("HTTP "+r.status+" sur "+url);
+    return r.text();
+  });
+}
+function parseCSV(text){
+  text=(text||"").replace(/^\uFEFF/,"");                       // BOM
+  const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
+  if(!lines.length) return [];
+  const head=lines[0].split(",").map(s=>s.trim());
+  return lines.slice(1).filter(Boolean).map(line=>{
+    const cols = splitCSVLine(line);
+    const row={};
+    head.forEach((h,i)=> row[h]=cols[i]??"");
+    return row;
+  });
+}
+function splitCSVLine(line){
+  const out=[]; let cur=""; let q=false;
   for(let i=0;i<line.length;i++){
     const c=line[i];
-    if(c === '"'){
-      if(inQuotes && i+1<line.length && line[i+1]==='"'){
-        // guillemet échappé ""
-        cur += '"';
-        i++;
-      }else{
-        inQuotes = !inQuotes;
-      }
-    }else if(c === delimiter && !inQuotes){
-      result.push(cur);
-      cur = "";
+    if(q){
+      if(c==='"'){
+        if(line[i+1]==='"'){ cur+='"'; i++; }
+        else q=false;
+      }else cur+=c;
     }else{
-      cur += c;
+      if(c==='"') q=true;
+      else if(c===","){ out.push(cur); cur=""; }
+      else cur+=c;
     }
   }
-  result.push(cur);
-  return result;
+  out.push(cur);
+  return out;
 }
-
-function detectDelimiter(headerLine){
-  const commaCount = (headerLine.match(/,/g) || []).length;
-  const semiCount  = (headerLine.match(/;/g) || []).length;
-  if(semiCount && !commaCount) return ";";
-  if(commaCount && !semiCount) return ",";
-  if(semiCount > commaCount)   return ";";
-  return ",";
+function parseOneColCSV(text){
+  text=(text||"").replace(/^\uFEFF/,"");
+  const lines = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n").map(x=>x.trim()).filter(Boolean);
+  if(!lines.length) return [];
+  const head = (lines[0]||"").toLowerCase();
+  const content = (/auteur|ville|th[eè]me|epoqu/.test(head)) ? lines.slice(1) : lines;
+  return Array.from(new Set(content)).sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
 }
-
-function parseCSV(text){
-  const rawLines = text.replace(/\r\n/g,"\n").split("\n").filter(l=>l.trim()!=="");
-  if(!rawLines.length) return [];
-
-  // détecter le séparateur à partir de la 1ère ligne
-  const headerLine = rawLines[0];
-  const delim = detectDelimiter(headerLine);
-  CSV_DELIM = delim; // on mémorise pour l'écriture
-
-  const headers = splitCSVLine(headerLine, delim).map(h=>h.trim());
-  const rows = [];
-
-  for(let i=1;i<rawLines.length;i++){
-    const line = rawLines[i];
-    if(!line.trim()) continue;
-    const cols = splitCSVLine(line, delim);
-    const obj = {};
-    headers.forEach((h,idx)=>{
-      obj[h] = cols[idx] !== undefined ? cols[idx].trim() : "";
-    });
-    rows.push(obj);
-  }
-
-  return rows;
-}
-
 function toCSV(rows){
-  const headers=[
-    "Année","Numéro","Titre","Page(s)",
-    "Auteur(s)","Ville(s)","Theme(s)","Epoque"
-  ];
-  const delim = CSV_DELIM || ",";
-
-  const esc = (value)=>{
-    let v = value ?? "";
-    v = String(v);
-    if(v.includes('"')) v = v.replace(/"/g,'""');
-    if(v.includes(delim) || v.includes("\n") || v.includes('"')){
-      v = `"${v}"`;
-    }
-    return v;
-  };
-
-  const lines = [];
-  lines.push(headers.join(delim));
-  rows.forEach(r=>{
-    const line = headers.map(h=>esc(r[h])).join(delim);
-    lines.push(line);
-  });
-  return lines.join("\n");
+  const COLS=["Année","Numéro","Titre","Page(s)","Auteur(s)","Ville(s)","Theme(s)","Epoque"];
+  const esc=s=>{ s=(s==null?"":(""+s)).replaceAll('"','""'); return /[",\n]/.test(s) ? `"${s}"` : s; };
+  const head=COLS.join(",");
+  const body=rows.map(r=>COLS.map(h=>esc(r[h])).join(",")).join("\n");
+  return head+"\n"+body+"\n";
+}
+function toTSV(rows){
+  const COLS=["Année","Numéro","Titre","Page(s)","Auteur(s)","Ville(s)","Theme(s)","Epoque"];
+  const head=COLS.join("\t");
+  const body=rows.map(r=>COLS.map(h=>r[h]??"").join("\t")).join("\n");
+  return head+"\n"+body+"\n";
+}
+function normalizeNumeroInput(v){
+  v=(v||"").trim();
+  if(!v) return "";
+  // Nettoie un peu les variantes "Memoire", "mémoire", etc.
+  v=v.replace(/^\s*m[ée]moire\s*/i,"Mémoire ");
+  return v;
 }
 
-/* ==== fetch CSV (avec anti-cache) ==== */
-async function fetchText(url){
-  const cacheBuster = `_=${Date.now()}`;
-  const sep = url.includes("?") ? "&" : "?";
-  const full = `${url}${sep}${cacheBuster}`;
-  const res = await fetch(full, { cache:"no-store" });
-  if(!res.ok) throw new Error(`HTTP ${res.status} sur ${url}`);
-  return await res.text();
+/* ==== Badge de sauvegarde ==== */
+function setupSaveBadge(){
+  const saveBadge   = document.getElementById("status-save");
+  const unsavedBadge= document.getElementById("status-unsaved");
+  function setState(state){
+    if(!saveBadge||!unsavedBadge) return;
+    if(state==="saved"){
+      saveBadge.classList.remove("hidden");
+      unsavedBadge.classList.add("hidden");
+    }else if(state==="unsaved"){
+      saveBadge.classList.add("hidden");
+      unsavedBadge.classList.remove("hidden");
+    }else{
+      saveBadge.classList.add("hidden");
+      unsavedBadge.classList.add("hidden");
+    }
+  }
+  window._setSaveState=setState;
+}
+
+/* ==== Auth GitHub + API ==== */
+function getStoredToken(){ try{ return localStorage.getItem("ahpv_token")||null; }catch{ return null; } }
+function storeToken(t){ try{ if(t) localStorage.setItem("ahpv_token", t); else localStorage.removeItem("ahpv_token"); }catch{} }
+
+async function githubRequest(path, opts={}){
+  if(!GHTOKEN) throw new Error("Pas de token GitHub");
+  const res=await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/${path}`,{
+    headers:{
+      "Authorization":"token "+GHTOKEN,
+      "Accept":"application/vnd.github+json"
+    },
+    ...opts
+  });
+  if(!res.ok){
+    const txt=await res.text().catch(()=>"?");
+    throw new Error("GitHub API "+res.status+" : "+txt);
+  }
+  return res.json();
 }
 
 async function fetchCSVArticles(){
   try{
     console.log("📋 Chargement des données...");
-    const txt=await fetchText(RAW_ART);
-    const rows=parseCSV(txt);
-    if(!rows.length){
-      toast("⚠ Fichier CSV vide ou entêtes manquantes");
+    const txt = await fetchText(CSV_PATH);
+    const rows= parseCSV(txt);
+    if(!rows || !rows.length){
+      console.warn("⚠ CSV articles vide !");
     }
-    console.log(`✅ ${rows.length} articles chargés`);
-    return rows;
-  }catch(e){
-    console.error(e);
-    toast("❌ Impossible de charger le catalogue (articles.csv). Vérifiez le dépôt / chemin.");
-    return [];
+    ARTICLES = rows;
+    console.log(`✅ ${ARTICLES.length} articles chargés`);
+  }catch(err){
+    console.error("❌ Erreur chargement CSV articles", err);
+    alert("Impossible de charger le fichier des articles. Vérifiez le nom et le chemin.");
+    ARTICLES = [];
   }
 }
 
-async function fetchCSVList(url, labelForLog){
+async function fetchList(path, kind){
   try{
-    console.log(`📝 Chargement des listes secondaires (non critique)...`);
-    const txt=await fetchText(url);
-    const lines=txt.replace(/\r\n/g,"\n").split(/\n+/).map(l=>l.trim()).filter(Boolean);
-    // on suppose une 1ère ligne d'entête facultative : "Nom" / "Valeur"
-    const data = (lines.length && /;/.test(lines[0]))
-      ? lines.slice(1).map(l=>l.split(";")[0].trim()).filter(Boolean)
-      : lines;
-    console.log(`✅ ${data.length} ${labelForLog} chargés`);
-    return uniq(data);
-  }catch(e){
-    console.warn(`⚠ Impossible de charger ${labelForLog} :`, e);
-    // Pour époques, c'est vraiment optionnel : pas de toast bloquant
-    if (labelForLog !== "époques") {
-      toast(`ℹ ${labelForLog} non disponibles (fichier manquant ?).`);
-    }
-    return [];
+    const txt=await fetchText(path);
+    const list=parseOneColCSV(txt);
+    LISTS[kind]=list;
+    console.log(`✅ ${list.length} ${kind} chargés`);
+  }catch(err){
+    console.warn(`⚠ Impossible de charger ${kind} :`, err);
+    LISTS[kind]=[];
   }
 }
 
-/* ==== Normalisation des champs auteurs / villes ==== */
-function normaliseMulti(str, canonMap){
-  if(!str) return "";
-  const parts = str
-    .split(/[;,]/)
-    .map(s=>s.trim())
-    .filter(Boolean);
-
-  const norm = parts.map(p=>{
-    const key=deburr(p);
-    if(canonMap.has(key)) return canonMap.get(key);
-    return p;
-  });
-
-  return uniq(norm).join("; ");
+async function loadLists(){
+  console.log("📝 Chargement des listes secondaires (non critique)...");
+  await Promise.all([
+    fetchList(AUTHORS_PATH,"auteurs"),
+    fetchList(CITIES_PATH,"villes"),
+    fetchList(THEMES_PATH,"themes"),
+    fetchList(EPOQUES_PATH,"epoques").catch(err=>{
+      console.warn("⚠ Impossible de charger époques :–", err);
+      LISTS.epoques=[];
+    })
+  ]);
 }
 
-function normaliseRowFields(row){
-  const r={...row};
-  r["Auteur(s)"] = normaliseMulti(r["Auteur(s)"], CANON.auteurs);
-  r["Ville(s)"]  = normaliseMulti(r["Ville(s)"],  CANON.villes);
-  // Theme(s) + Epoque : pour l'instant texte libre
-  return r;
-}
+/* ==== Application des filtres et tri ==== */
+function showLoading(b){ document.getElementById("loading")?.classList.toggle("hidden", !b); }
 
-/* ==== Tri & filtres ==== */
-function rowMatchesFilters(r){
-  // Recherche texte (titre/auteurs/villes/thèmes)
-  const q=(FILTERS.text||"").trim().toLowerCase();
-  if(q){
-    const hay=[
-      r["Titre"], r["Auteur(s)"], r["Ville(s)"], r["Theme(s)"]
-    ].join(" ").toLowerCase();
-    if(!hay.includes(q)) return false;
-  }
-  if(FILTERS.annee && (r["Année"]||"")!==FILTERS.annee) return false;
-  if(FILTERS.numero && (r["Numéro"]||"")!==FILTERS.numero) return false;
-
-  if(FILTERS.ville){
-    const vs=(r["Ville(s)"]||"").toLowerCase();
-    if(!vs.includes(FILTERS.ville.toLowerCase())) return false;
-  }
-  if(FILTERS.theme){
-    const ts=(r["Theme(s)"]||"").toLowerCase();
-    if(!ts.includes(FILTERS.theme.toLowerCase())) return false;
-  }
-  if(FILTERS.epoque){
-    const es=(r["Epoque"]||"").toLowerCase();
-    if(!es.includes(FILTERS.epoque.toLowerCase())) return false;
-  }
-  return true;
-}
-
+/* IMPORTANT: on renvoie les lignes + l'index source _i */
 function applyFilters(){
-  let rows = ARTICLES.map((r,idx)=>({...r,_i:idx})); // on garde l'index source
-  rows = rows.filter(rowMatchesFilters);
-
-  // tri
-  rows.sort((a,b)=>{
-    let av,bv;
-    switch(SORT.col){
-      case "annee": av=a["Année"]||"";  bv=b["Année"]||""; break;
-      case "numero":av=a["Numéro"]||""; bv=b["Numéro"]||""; break;
-      case "titre": av=a["Titre"]||"";  bv=b["Titre"]||""; break;
-      default: av=""; bv="";
-    }
-    return SORT.dir * ((""+av).localeCompare(""+bv,"fr",{numeric:true}));
-  });
-
+  let rows = ARTICLES.map((r, idx) => ({ ...r, _i: idx }));
+  if(FILTER_YEAR)   rows = rows.filter(r=>(r["Année"]||"")===FILTER_YEAR);
+  if(FILTER_NUM)    rows = rows.filter(r=>((""+(r["Numéro"]||"")).trim()===((""+FILTER_NUM).trim())));
+  if(FILTER_EPOQUE) rows = rows.filter(r=>(r["Epoque"]||"")===FILTER_EPOQUE);
+  if(QUERY){
+    const q=QUERY.toLowerCase();
+    rows=rows.filter(r=>Object.values(r).some(v=>(v??"").toString().toLowerCase().includes(q)));
+  }
+  if(sortCol){
+    const factor=sortDir==="desc"?-1:1;
+    rows.sort((a,b)=> (""+(a[sortCol]??"")).localeCompare(""+(b[sortCol]??""),"fr",{numeric:true,sensitivity:"base"})*factor);
+  }
   return rows;
 }
 
-/* ==== Rendu principal ==== */
+/* ==== Rendu du tableau + pagination ==== */
 function render(){
-  const rows=applyFilters();
-  const total=rows.length;
-  const start=(currentPage-1)*pageSize;
-  const page=rows.slice(start, start+pageSize);
+  const rows = applyFilters();
+  const total = rows.length;
+  const pages = Math.max(1, Math.ceil(total / pageSize));
 
-  const tbody=document.getElementById("tbody");
+  // Si la page courante dépasse le max (ex: après changement de pageSize)
+  if (currentPage > pages) currentPage = pages;
+  if (currentPage < 1) currentPage = 1;
+
+  const start = (currentPage - 1) * pageSize;
+  const page = rows.slice(start, start + pageSize);
+
+  const tbody = document.getElementById("tbody");
   if (!tbody) return;
 
   if (!page.length) {
-    // Aucun résultat pour les filtres actuels
     tbody.innerHTML = `
       <tr>
         <td colspan="9" style="text-align:center; padding:20px; font-style:italic;">
@@ -326,563 +239,710 @@ function render(){
         </td>
       </tr>`;
   } else {
-    tbody.innerHTML=page.map((r)=>{
-      const i=r._i; // index réel dans ARTICLES
-      if(editingIndex!==i){
+    tbody.innerHTML = page.map((r) => {
+      const i = r._i; // index réel dans ARTICLES
+      if (editingIndex !== i) {
         return `
-        <tr class="row" ondblclick="window._inlineEdit?.(${i})" onclick="window._editRow?.(${i})">
-          <td data-label="Année"  class="col-annee">${r["Année"]||""}</td>
-          <td data-label="Numéro" class="col-numero">${r["Numéro"]||""}</td>
-          <td data-label="Titre"  class="col-titre">${r["Titre"]||""}</td>
-          <td data-label="Page(s)">${r["Page(s)"]||""}</td>
-          <td data-label="Auteur(s)">${r["Auteur(s)"]||""}</td>
-          <td data-label="Ville(s)">${r["Ville(s)"]||""}</td>
-          <td data-label="Thème(s)">${r["Theme(s)"]||""}</td>
-          <td data-label="Période">${r["Epoque"]||""}</td>
-          <td class="actions">
-            <button class="edit" onclick="window._inlineEdit?.(${i})" aria-label="Modifier">✎</button>
-            <button class="del"  onclick="window._deleteRow?.(${i})" aria-label="Supprimer">🗑</button>
-          </td>
-        </tr>`;
-      }else{
+      <tr class="row" ondblclick="window._inlineEdit?.(${i})" onclick="window._editRow?.(${i})">
+        <td data-label="Année"  class="col-annee">${r["Année"]||""}</td>
+        <td data-label="Numéro" class="col-numero">${r["Numéro"]||""}</td>
+        <td data-label="Titre"  class="col-titre">${r["Titre"]||""}</td>
+        <td data-label="Page(s)">${r["Page(s)"]||""}</td>
+        <td data-label="Auteur(s)">${r["Auteur(s)"]||""}</td>
+        <td data-label="Ville(s)">${r["Ville(s)"]||""}</td>
+        <td data-label="Thème(s)">${r["Theme(s)"]||""}</td>
+        <td data-label="Période">${r["Epoque"]||""}</td>
+        <td class="actions">
+          <button class="edit" onclick="window._inlineEdit?.(${i})" aria-label="Modifier">✎</button>
+          <button class="del"  onclick="window._askDelete?.(${i})" aria-label="Supprimer">🗑</button>
+        </td>
+      </tr>`;
+      } else {
         return `
-        <tr class="row editing">
-          <td><input id="ei-annee"   autocomplete="off" value="${r["Année"]||""}" /></td>
-          <td><input id="ei-numero"  autocomplete="off" value="${r["Numéro"]||""}" /></td>
-          <td><input id="ei-titre"   autocomplete="off" value="${r["Titre"]||""}" /></td>
-          <td><input id="ei-pages"   autocomplete="off" value="${r["Page(s)"]||""}" /></td>
-          <td><input id="ei-auteurs" autocomplete="off" value="${r["Auteur(s)"]||""}" /></td>
-          <td><input id="ei-villes"  autocomplete="off" value="${r["Ville(s)"]||""}" /></td>
-          <td><input id="ei-themes"  autocomplete="off" value="${r["Theme(s)"]||""}" /></td>
-          <td><input id="ei-epoque"  autocomplete="off" value="${r["Epoque"]||""}" /></td>
-          <td class="actions">
-            <button class="save" onclick="window._inlineSave?.()" aria-label="Enregistrer">💾</button>
-            <button class="cancel" onclick="window._inlineCancel?.()" aria-label="Annuler">✖</button>
-          </td>
-        </tr>`;
+      <tr class="row editing">
+        <td><input id="ei-annee"   autocomplete="off" value="${r["Année"]||""}" /></td>
+        <td><input id="ei-numero"  autocomplete="off" value="${r["Numéro"]||""}" /></td>
+        <td><input id="ei-titre"   autocomplete="off" value="${r["Titre"]||""}" /></td>
+        <td><input id="ei-pages"   autocomplete="off" value="${r["Page(s)"]||""}" /></td>
+        <td><input id="ei-auteurs" autocomplete="off" value="${r["Auteur(s)"]||""}" /></td>
+        <td><input id="ei-villes"  autocomplete="off" value="${r["Ville(s)"]||""}" /></td>
+        <td><input id="ei-themes"  autocomplete="off" value="${r["Theme(s)"]||""}" /></td>
+        <td><input id="ei-epoque"  autocomplete="off" value="${r["Epoque"]||""}" /></td>
+        <td class="actions">
+          <button class="save"   onclick="window._inlineSave?.()"   aria-label="Enregistrer">💾</button>
+          <button class="cancel" onclick="window._inlineCancel?.()" aria-label="Annuler">✖</button>
+        </td>
+      </tr>`;
       }
     }).join("");
   }
 
-  const pages=Math.max(1, Math.ceil(total/pageSize));
-  document.getElementById("pageinfo").textContent = `${Math.min(currentPage,pages)} / ${pages} — ${total} ligne(s)`;
-  document.getElementById("prev").disabled = currentPage<=1;
-  document.getElementById("next").disabled = currentPage>=pages;
+  // Tri visuel des en-têtes
+  document.querySelectorAll("th[data-col]").forEach(th => {
+    th.classList.remove("sort-asc", "sort-desc");
+    if (th.dataset.col === sortCol) {
+      th.classList.add(sortDir === "asc" ? "sort-asc" : "sort-desc");
+    }
+  });
 
-  if (currentPage > pages){ currentPage = pages; return render(); }
+  // Infos de pagination
+  const pageInfo = document.getElementById("pageinfo");
+  if (pageInfo) {
+    pageInfo.textContent = `${currentPage} / ${pages} — ${total} article(s)`;
+  }
+
+  // Boutons précédent / suivant / première / dernière
+  const prevBtn  = document.getElementById("prev");
+  const nextBtn  = document.getElementById("next");
+  const firstBtn = document.getElementById("first");
+  const lastBtn  = document.getElementById("last");
+
+  if (prevBtn)  prevBtn.disabled  = currentPage <= 1;
+  if (firstBtn) firstBtn.disabled = currentPage <= 1;
+  if (nextBtn)  nextBtn.disabled  = currentPage >= pages;
+  if (lastBtn)  lastBtn.disabled  = currentPage >= pages;
+
+  // Petits numéros de pages (au centre)
+  const pn = document.getElementById("page-numbers");
+  if (pn) {
+    pn.innerHTML = "";
+    const maxButtons = 7;
+    let startPage = Math.max(1, currentPage - 3);
+    let endPage   = Math.min(pages, startPage + maxButtons - 1);
+    if (endPage - startPage + 1 < maxButtons) {
+      startPage = Math.max(1, endPage - maxButtons + 1);
+    }
+    for (let p = startPage; p <= endPage; p++) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn ghost page-num" + (p === currentPage ? " active" : "");
+      btn.textContent = String(p);
+      btn.dataset.page = String(p);
+      btn.addEventListener("click", () => {
+        currentPage = p;
+        render();
+      });
+      pn.appendChild(btn);
+    }
+  }
+
+  // Total global
+  const totalLabel = document.getElementById("total-count");
+  if (totalLabel) {
+    totalLabel.textContent = `Total : ${ARTICLES.length} article(s)`;
+  }
 
   const sc=document.getElementById("status-count"); if(sc) sc.textContent=`Fichier: ✅ (${ARTICLES.length})`;
   const sa=document.getElementById("status-auth");  if(sa) sa.textContent= GHTOKEN ? "🔐 Connecté" : "🔓 Invité";
 }
 
 /* ==== Inline edit ==== */
-
-window._editRow = (idx) => {
-  try {
-    if (matchMedia("(max-width:800px)").matches) {
-      _inlineEdit(idx);
+window._editRow=(idx)=>{ try{ if(matchMedia("(max-width:800px)").matches) _inlineEdit(idx); }catch{ _inlineEdit(idx); } };
+window._inlineEdit=(idx)=>{
+  editingIndex=idx; render();
+  setTimeout(()=>document.getElementById("ei-titre")?.focus(),0);
+  const ids=["ei-annee","ei-numero","ei-titre","ei-pages","ei-auteurs","ei-villes","ei-themes","ei-epoque"];
+  const scheduleSave=debounce(()=>{ try{ AUTO_SAVE_SILENT=true; window._inlineSave?.(); } finally { AUTO_SAVE_SILENT=false; } }, 800);
+  ids.forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.addEventListener("change", scheduleSave,{passive:true});
+    el.addEventListener("input",  scheduleSave,{passive:true});
+  });
+};
+window._inlineCancel=()=>{ editingIndex=-1; render(); };
+window._inlineSave=async ()=>{
+  if(editingIndex<0) return;
+  const row=ARTICLES[editingIndex];
+  const g=id=>document.getElementById(id)?.value?.trim()||"";
+  row["Année"]  = g("ei-annee");
+  row["Numéro"] = g("ei-numero");
+  row["Titre"]  = g("ei-titre");
+  row["Page(s)"]= g("ei-pages");
+  row["Auteur(s)"]=g("ei-auteurs");
+  row["Ville(s)"]  =g("ei-villes");
+  row["Theme(s)"]  =g("ei-themes");
+  row["Epoque"]    =g("ei-epoque");
+  editingIndex=-1;
+  window._setSaveState?.("unsaved");
+  render();
+  if(!AUTO_SAVE_SILENT){
+    try{
+      await queueSave();
+      showToast("Modifications enregistrées sur GitHub","success");
+    }catch(err){
+      console.error("Erreur de sauvegarde inline", err);
+      showToast("Erreur de sauvegarde sur GitHub","error");
     }
-  } catch {
-    _inlineEdit(idx);
   }
 };
 
-window._inlineEdit = (idx) => {
-  editingIndex = idx;
-  render();
-
-  setTimeout(() => document.getElementById("ei-titre")?.focus(), 0);
-
-  const ids = [
-    "ei-annee",
-    "ei-numero",
-    "ei-titre",
-    "ei-pages",
-    "ei-auteurs",
-    "ei-villes",
-    "ei-themes",
-    "ei-epoque"
-  ];
-
-  ids.forEach((id) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        window._inlineSave?.();
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        window._inlineCancel?.();
-      }
-    });
-  });
-};
-
-window._inlineCancel = () => {
-  editingIndex = -1;
-  render();
-};
-
-window._inlineSave = async () => {
-  const i = editingIndex;
-  if (i < 0) return;
-
-  const v = (id) => document.getElementById(id)?.value ?? "";
-
-  const updatedRaw = {
-    "Année":     v("ei-annee"),
-    "Numéro":    v("ei-numero"),
-    "Titre":     v("ei-titre"),
-    "Page(s)":   v("ei-pages"),
-    "Auteur(s)": v("ei-auteurs"),
-    "Ville(s)":  v("ei-villes"),
-    "Theme(s)":  v("ei-themes"),
-    "Epoque":    v("ei-epoque")
-  };
-
-  const updated = normaliseRowFields(updatedRaw);
-
-  ARTICLES[i] = updated;
-  editingIndex = -1;
-  render();
-  enqueueSave("Édition ligne");
-};
-
-/* ==== Ajout / Suppression ==== */
+/* ==== Filtres & tri ==== */
+function refreshYearOptions(){
+  const ya=document.getElementById("filter-annee");
+  if(!ya) return;
+  const years=uniqSorted(ARTICLES.map(r=>r["Année"]).filter(Boolean));
+  const cur=ya.value;
+  ya.innerHTML='<option value="">(toutes)</option>'+years.map(y=>`<option value="${y}">${y}</option>`).join("");
+  if(years.includes(cur)) ya.value=cur; else ya.value="";
+}
 function getNumbersForYear(year){
-  let nums=ARTICLES
-    .filter(r=>!year || (r["Année"]||"")==year)
-    .map(r=> (r["Numéro"]==null?"":(""+r["Numéro"]).trim()))
-    .filter(Boolean);
-  nums=Array.from(new Set(nums));
+  const set=new Set();
+  for(const r of ARTICLES){
+    if(!year || (r["Année"]||"")===year){
+      const n=(""+(r["Numéro"]||"")).trim();
+      if(n) set.add(n);
+    }
+  }
+  const nums=Array.from(set);
   nums.sort((a,b)=>(""+a).localeCompare(""+b,"fr",{numeric:true}));
   return nums;
 }
-function refreshAddNumeroOptions(){
-  const year=document.getElementById("a-annee")?.value?.trim()||"";
-  const sel=document.getElementById("a-numero");
-  if(!sel || sel.tagName!=="SELECT") return;
-  const base = sel.getAttribute("data-base-label") || "Mémoire n°";
-  const span=document.getElementById("numero-suggestion");
+function refreshNumeroOptions(){
+  const fn=document.getElementById("filter-numero");
+  if(!fn) return;
+  const year=document.getElementById("filter-annee")?.value||"";
   const nums=getNumbersForYear(year);
-  let suggestion = "";
-  if(!year || !nums.length){
-    suggestion = "";
-  }else{
-    const last = nums[nums.length-1];
-    const n = parseInt(last,10);
-    if(!isNaN(n)) suggestion = `${base} ${n+1}`;
+  const cur=fn.value;
+  fn.innerHTML='<option value="">(tous)</option>'+nums.map(n=>`<option value="${n}">${n}</option>`).join("");
+  if(nums.includes(cur)) fn.value=cur; else fn.value="";
+}
+function refreshEpoqueOptions(){
+  const fe=document.getElementById("filter-epoque");
+  if(!fe) return;
+  const src = LISTS.epoques.length ? LISTS.epoques : Array.from(new Set((ARTICLES||[]).map(r=>r["Epoque"]).filter(Boolean)));
+  fe.innerHTML = '<option value="">(toutes)</option>' + uniqSorted(src).map(e=>`<option value="${e}">${e}</option>`).join("");
+}
+function resetAllFilters(){
+  document.getElementById("filter-annee").value="";
+  document.getElementById("filter-numero").value="";
+  document.getElementById("filter-epoque").value="";
+  document.getElementById("search").value="";
+  FILTER_YEAR=""; FILTER_NUM=""; FILTER_EPOQUE=""; QUERY="";
+  sortCol=null; sortDir="asc"; currentPage=1;
+  refreshNumeroOptions(); render();
+}
+function bindFilters(){
+  const fy=document.getElementById("filter-annee");
+  const fn=document.getElementById("filter-numero");
+  const fe=document.getElementById("filter-epoque");
+  const q =document.getElementById("search");
+  fy?.addEventListener("change", ()=>{
+    FILTER_YEAR=fy.value;
+    if(!FILTER_YEAR){ fn.value=""; FILTER_NUM=""; }
+    refreshNumeroOptions(); currentPage=1; render();
+  });
+  fn?.addEventListener("change", ()=>{ FILTER_NUM=fn.value; currentPage=1; render(); });
+  fe?.addEventListener("change", ()=>{ FILTER_EPOQUE=fe.value; currentPage=1; render(); });
+  if(q){
+    const updateQ=debounce(()=>{
+      QUERY=q.value.trim();
+      currentPage=1; render();
+    },200);
+    q.addEventListener("input", updateQ);
   }
-  if(span) span.textContent = suggestion || "";
+  document.getElementById("reset-filters")?.addEventListener("click", resetAllFilters);
+}
+function bindSorting(){
+  document.querySelectorAll("th[data-col]").forEach(th=>{
+    th.addEventListener("click", ()=>{
+      const col=th.dataset.col;
+      if(sortCol===col) sortDir=(sortDir==="asc"?"desc":"asc");
+      else{ sortCol=col; sortDir="asc"; }
+      currentPage=1;
+      render();
+    });
+    th.addEventListener("keypress",(e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); th.click(); } });
+  });
 }
 
-function addRowFromForm(form){
-  const getVal=(id)=>form.querySelector("#"+id)?.value?.trim() || "";
-  const raw={
-    "Année":     getVal("a-annee"),
-    "Numéro":    getVal("a-numero") || document.getElementById("numero-suggestion")?.textContent || "",
-    "Titre":     getVal("a-titre"),
-    "Page(s)":   getVal("a-pages"),
-    "Auteur(s)": getVal("a-auteurs"),
-    "Ville(s)":  getVal("a-villes"),
-    "Theme(s)":  getVal("a-themes"),
-    "Epoque":    getVal("a-epoque")
+/* ==== Pagination : boutons + select "page-size" ==== */
+function bindPager(){
+  // boutons précédent / suivant
+  const prevBtn = document.getElementById("prev");
+  if (prevBtn) {
+    prevBtn.addEventListener("click", () => {
+      if (currentPage > 1) {
+        currentPage--;
+        render();
+      }
+    });
+  }
+
+  const nextBtn = document.getElementById("next");
+  if (nextBtn) {
+    nextBtn.addEventListener("click", () => {
+      currentPage++;
+      render();
+    });
+  }
+
+  // bouton première page
+  const firstBtn = document.getElementById("first");
+  if (firstBtn) {
+    firstBtn.addEventListener("click", () => {
+      currentPage = 1;
+      render();
+    });
+  }
+
+  // bouton dernière page
+  const lastBtn = document.getElementById("last");
+  if (lastBtn) {
+    lastBtn.addEventListener("click", () => {
+      const total = applyFilters().length;
+      const pages = Math.max(1, Math.ceil(total / pageSize));
+      currentPage = pages;
+      render();
+    });
+  }
+
+  // sélecteur "articles par page"
+  const sizeSelect = document.getElementById("page-size");
+  if (sizeSelect) {
+    // valeur initiale depuis le HTML
+    const initial = parseInt(sizeSelect.value, 10);
+    if (!isNaN(initial) && initial > 0) {
+      pageSize = initial;
+    } else {
+      sizeSelect.value = String(pageSize);
+    }
+
+    sizeSelect.addEventListener("change", (e) => {
+      const v = parseInt(e.target.value, 10);
+      if (!isNaN(v) && v > 0) {
+        pageSize = v;
+        currentPage = 1; // on repart du début
+        render();
+      }
+    });
+  }
+}
+
+/* ==== Exports ==== */
+async function ensureXLSX(){ if(window.XLSX) return; await new Promise((res,rej)=>{ const s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
+function download(name, text, mime="text/csv;charset=utf-8"){
+  const blob=new Blob([text],{type:mime}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href);
+}
+function getFilteredRows(){ return applyFilters(); }
+function getAllRows(){ return ARTICLES.slice(); }
+function bindExports(){
+  document.getElementById("export-copy")?.addEventListener("click", async ()=>{
+    const tsv=toTSV(getFilteredRows());
+    try{ await navigator.clipboard.writeText(tsv); alert("Copié !"); }
+    catch{ download("articles_filtrés.tsv", tsv, "text/tab-separated-values;charset=utf-8"); }
+  });
+  document.getElementById("export-csv")?.addEventListener("click", ()=> download("articles_filtrés.csv", toCSV(getFilteredRows())));
+  document.getElementById("export-xlsx")?.addEventListener("click", async ()=>{
+    await ensureXLSX();
+    const COLS=["Année","Numéro","Titre","Page(s)","Auteur(s)","Ville(s)","Theme(s)","Epoque"];
+    const data=getFilteredRows().map(r=>{ const o={}; COLS.forEach(h=>o[h]=r[h]??""); return o; });
+    const wb=XLSX.utils.book_new(); const ws=XLSX.utils.json_to_sheet(data,{cellDates:false});
+    XLSX.utils.book_append_sheet(wb, ws, "Articles"); XLSX.writeFile(wb, "articles_filtrés.xlsx");
+  });
+  document.getElementById("export-print")?.addEventListener("click", ()=>window.print());
+  document.getElementById("export-csv-all")?.addEventListener("click", ()=> download("articles_tous.csv", toCSV(getAllRows())));
+  document.getElementById("export-xlsx-all")?.addEventListener("click", async ()=>{
+    await ensureXLSX();
+    const COLS=["Année","Numéro","Titre","Page(s)","Auteur(s)","Ville(s)","Theme(s)","Epoque"];
+    const data=getAllRows().map(r=>{ const o={}; COLS.forEach(h=>o[h]=r[h]??""); return o; });
+    const wb=XLSX.utils.book_new(); const ws=XLSX.utils.json_to_sheet(data,{cellDates:false});
+    XLSX.utils.book_append_sheet(wb, ws, "Articles"); XLSX.writeFile(wb, "articles_tous.xlsx");
+  });
+}
+
+/* ==== Toast ==== */
+function showToast(msg, type="info"){
+  const cont=document.getElementById("toast-container");
+  if(!cont) return alert(msg);
+  const div=document.createElement("div");
+  div.className="toast toast-"+type;
+  div.textContent=msg;
+  cont.appendChild(div);
+  setTimeout(()=>{ div.style.opacity="0"; setTimeout(()=>div.remove(),400); }, 3000);
+}
+
+/* ==== Auth UI ==== */
+function bindAuth(){
+  const loginBtn = document.getElementById("login-btn");
+  const logoutBtn= document.getElementById("logout-btn");
+  function refreshStatus(){
+    const sa=document.getElementById("status-auth");
+    if(sa) sa.textContent = GHTOKEN ? "🔐 Connecté" : "🔓 Invité";
+  }
+  loginBtn?.addEventListener("click", ()=>{
+    const t=prompt("Collez ici un token GitHub (scope: repo). Il sera stocké dans localStorage.");
+    if(!t) return;
+    GHTOKEN=t.trim(); storeToken(GHTOKEN); refreshStatus();
+    showToast("Token enregistré localement.","success");
+  });
+  logoutBtn?.addEventListener("click", ()=>{
+    if(!confirm("Supprimer le token GitHub local ?")) return;
+    GHTOKEN=null; storeToken(null); refreshStatus();
+  });
+  GHTOKEN=getStoredToken();
+  refreshStatus();
+}
+
+/* ==== Sauvegarde sur GitHub (queue) ==== */
+async function queueSave(){
+  return new Promise((resolve,reject)=>{
+    SAVE_QUEUE.push({resolve,reject});
+    processQueue();
+  });
+}
+async function processQueue(){
+  if(IS_SAVING || !SAVE_QUEUE.length) return;
+  IS_SAVING=true;
+  const job=SAVE_QUEUE[0];
+  try{
+    const now=Date.now();
+    if(now-LAST_SAVE_TIME<1000) await new Promise(r=>setTimeout(r,1000-(now-LAST_SAVE_TIME)));
+    await saveToGitHub();
+    LAST_SAVE_TIME=Date.now();
+    window._setSaveState?.("saved");
+    job.resolve();
+  }catch(err){
+    job.reject(err);
+  }finally{
+    SAVE_QUEUE.shift();
+    IS_SAVING=false;
+    if(SAVE_QUEUE.length) processQueue();
+  }
+}
+async function saveToGitHub(){
+  if(!GHTOKEN) throw new Error("Pas de token GitHub");
+  const path=`contents/${CSV_PATH}`;
+  const meta=await githubRequest(path, {method:"GET"});
+  const sha=meta.sha;
+  const content=btoa(unescape(encodeURIComponent(toCSV(ARTICLES))));
+  const body={message:"Maj catalogue articles", content, sha, branch:GITHUB_BRANCH};
+  await githubRequest(path, {method:"PUT", body:JSON.stringify(body)});
+}
+
+/* ==== Gestion suppression ==== */
+window._askDelete=(idx)=>{
+  const row=ARTICLES[idx];
+  const dlg=document.getElementById("confirm-modal");
+  if(!dlg) return;
+  document.getElementById("confirm-title").textContent=row["Titre"]||"(sans titre)";
+  dlg.returnValue="cancel";
+  dlg.showModal();
+  const confirmBtn=document.getElementById("confirm-delete");
+  const cancelBtn =document.getElementById("confirm-cancel");
+  const onConfirm=(e)=>{
+    e.preventDefault();
+    dlg.close("delete");
+    confirmBtn.removeEventListener("click",onConfirm);
+    cancelBtn.removeEventListener("click",onCancel);
+    doDelete(idx);
   };
-  const row=normaliseRowFields(raw);
-  ARTICLES.push(row);
-  document.getElementById("add-modal")?.close();
-  currentPage=Math.ceil(ARTICLES.length/pageSize);
+  const onCancel=()=>{
+    dlg.close("cancel");
+    confirmBtn.removeEventListener("click",onConfirm);
+    cancelBtn.removeEventListener("click",onCancel);
+  };
+  confirmBtn.addEventListener("click",onConfirm);
+  cancelBtn.addEventListener("click",onCancel);
+};
+async function doDelete(idx){
+  ARTICLES.splice(idx,1);
+  window._setSaveState?.("unsaved");
   render();
-  enqueueSave("Ajout d'article");
+  try{
+    await queueSave();
+    showToast("Article supprimé et sauvegardé sur GitHub","success");
+  }catch(err){
+    console.error("Erreur suppression",err);
+    showToast("Erreur de sauvegarde après suppression","error");
+  }
 }
 
-window._deleteRow=(idx)=>{
-  if(!confirm("Supprimer cet article ?")) return;
-  if(idx<0 || idx>=ARTICLES.length) return;
-  ARTICLES.splice(idx,1);
-  render();
-  enqueueSave("Suppression");
+/* ==== Modale ajout + listes (datalists) ==== */
+function refreshDatalists(){
+  const dlA=document.getElementById("dl-auteurs");
+  const dlV=document.getElementById("dl-villes");
+  const dlT=document.getElementById("dl-themes");
+  const dlE=document.getElementById("dl-epoques");
+  if(dlA) dlA.innerHTML = LISTS.auteurs.map(v=>`<option value="${v}"></option>`).join("");
+  if(dlV) dlV.innerHTML = LISTS.villes.map(v=>`<option value="${v}"></option>`).join("");
+  if(dlT) dlT.innerHTML = LISTS.themes.map(v=>`<option value="${v}"></option>`).join("");
+  if(dlE) dlE.innerHTML = LISTS.epoques.map(v=>`<option value="${v}"></option>`).join("");
+}
+window._openAddModal=()=>{
+  const dlg=document.getElementById("add-modal");
+  if(!dlg) return;
+  document.getElementById("a-annee").value="";
+  document.getElementById("a-numero").value="";
+  document.getElementById("a-numero-new").value="";
+  document.getElementById("a-titre").value="";
+  document.getElementById("a-pages").value="";
+  document.getElementById("a-auteurs").value="";
+  document.getElementById("a-villes").value="";
+  document.getElementById("a-themes").value="";
+  document.getElementById("a-epoque").value="";
+  refreshAddNumeroOptions();
+  dlg.showModal();
 };
 
-/* ==== Export CSV ==== */
-function downloadCSV(name, text){
-  const blob=new Blob([text],{type:"text/csv;charset=utf-8;"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;
-  a.download=name;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-function exportCurrent(){
-  const rows=applyFilters().map(r=>{
-    const { _i, ...rest } = r;
-    return rest;
+function findPotentialDuplicate(newArticle){
+  const titre=(newArticle["Titre"]||"").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu,"");
+  if(!titre) return null;
+  let best=null;
+  ARTICLES.forEach((a,idx)=>{
+    const t=(a["Titre"]||"").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu,"");
+    const dist=levenshtein(titre,t);
+    if(dist<=5){
+      if(!best || dist<best.dist) best={idx, dist};
+    }
   });
-  const csv=toCSV(rows);
-  downloadCSV("articles_filtre.csv", csv);
+  return best;
 }
-function exportAll(){
-  const csv=toCSV(ARTICLES);
-  downloadCSV("articles_tout.csv", csv);
-}
-
-/* ==== Sauvegarde GitHub (file d'attente) ==== */
-function setSaveBadge(state){
-  const elOk=document.getElementById("status-save");
-  const elKo=document.getElementById("status-unsaved");
-  if(!elOk || !elKo) return;
-  if(state==="ok"){
-    elOk.classList.remove("hidden");
-    elKo.classList.add("hidden");
-    elOk.textContent="✓ Sauvegardé";
-  }else if(state==="pending"){
-    elOk.classList.remove("hidden");
-    elKo.classList.add("hidden");
-    elOk.textContent="💾 Enregistrement…";
-  }else if(state==="error"){
-    elOk.classList.add("hidden");
-    elKo.classList.remove("hidden");
-    elKo.textContent="⚠ Échec";
-  }else{
-    elOk.classList.add("hidden");
-    elKo.classList.add("hidden");
-  }
-}
-
-async function getShaFor(apiUrl){
-  const res=await fetch(apiUrl,{
-    headers: GHTOKEN ? {Authorization:`token ${GHTOKEN}`} : {}
-  });
-  if(!res.ok) throw new Error("Impossible de lire le fichier GitHub");
-  const json=await res.json();
-  return json.sha;
-}
-
-async function saveToGitHubRaw(csvText, message="Mise à jour catalogue"){
-  if(!GHTOKEN) throw new Error("Pas de token");
-  let sha; 
-  try{ sha = await getShaFor(API_ART);}catch{ sha = null; }
-
-  const content = btoa(unescape(encodeURIComponent(csvText)));
-  const body = { message, content, branch: GITHUB_BRANCH };
-  if (sha) body.sha = sha;
-
-  const res = await fetch(API_ART, {
-    method: "PUT",
-    headers: {
-      "Content-Type":"application/json",
-      Authorization:`token ${GHTOKEN}`
-    },
-    body: JSON.stringify(body)
-  });
-
-  if(!res.ok){
-    console.error("Échec commit GitHub", res.status, await res.text());
-    throw new Error("Échec commit");
-  }
-}
-
-async function saveToGitHubMerged(csvText, message="Mise à jour catalogue (merge distant)"){
-  const remoteTxt = await fetchText(RAW_ART);
-  const remoteRows = parseCSV(remoteTxt);
-  const csv = csvText || toCSV(ARTICLES.length ? ARTICLES : remoteRows);
-  await saveToGitHubRaw(csv, message);
-}
-
-function enqueueSave(message="Mise à jour catalogue"){
-  if(!GHTOKEN){
-    if(!AUTO_SAVE_SILENT) toast("Modifié localement — cliquez 🔐 pour enregistrer sur GitHub");
-    setSaveBadge("error");
-    return;
-  }
-  SAVE_QUEUE.push({ message });
-  if(!IS_SAVING) runQueuedSave();
-}
-
-async function runQueuedSave(){
-  if(IS_SAVING) return;
-  IS_SAVING = true;
-  while(SAVE_QUEUE.length){
-    const payload = SAVE_QUEUE.pop();
-    try{
-      setSaveBadge("pending");
-      await saveToGitHubRaw(toCSV(ARTICLES), payload.message);
-      setSaveBadge("ok");
-    }catch(e){
-      console.error(e);
-      setSaveBadge("error");
-      if(!AUTO_SAVE_SILENT) toast("❌ Échec d'enregistrement GitHub");
+function levenshtein(a,b){
+  const m=a.length, n=b.length;
+  const dp=Array.from({length:m+1},()=>Array(n+1).fill(0));
+  for(let i=0;i<=m;i++) dp[i][0]=i;
+  for(let j=0;j<=n;j++) dp[0][j]=j;
+  for(let i=1;i<=m;i++){
+    for(let j=1;j<=n;j++){
+      const cost=(a[i-1]===b[j-1])?0:1;
+      dp[i][j]=Math.min(
+        dp[i-1][j]+1,
+        dp[i][j-1]+1,
+        dp[i-1][j-1]+cost
+      );
     }
   }
-  IS_SAVING=false;
+  return dp[m][n];
+}
+function shouldWarnDuplicate(newArticle){
+  const best=findPotentialDuplicate(newArticle);
+  if(best && best.dist>0){
+    const msg = `⚠ Un article très proche existe déjà (distance=${best.dist}).\n\n`+
+                `Titre nouveau :\n- ${newArticle["Titre"]}\n\n`+
+                `Titre existant :\n- ${ARTICLES[best.idx]["Titre"]}\n\n`+
+                `Voulez-vous quand même créer un nouvel article ?\n`+
+                `(OK = créer, Annuler = revenir au formulaire)`;
+    return confirm(msg);
+  }
+  return true;
 }
 
-/* ==== Login / Logout GitHub ==== */
-async function githubLoginInline(){
-  const token=prompt("Collez votre token GitHub (scope: repo, contenu)");
-  if(!token) return;
-  localStorage.setItem("ghtoken", token); 
-  GHTOKEN=token;
-  alert("Connecté à GitHub ✅");
-  render();
-  try{
-    AUTO_SAVE_SILENT=true;
-    await saveToGitHubMerged(toCSV(ARTICLES),"commit auto après connexion");
-  }catch(e){
-    console.warn("Impossible de pousser automatiquement après connexion", e);
-  }finally{
-    AUTO_SAVE_SILENT=false;
+/* ==== Listes (mini-éditeur) ==== */
+function ensureCanonMaps(){
+  for(const kind of ["auteurs","villes","themes","epoques"]){
+    const canon=CANON[kind];
+    for(const v of LISTS[kind]){
+      const key=v.toLowerCase();
+      if(!canon.has(key)) canon.set(key, v);
+    }
   }
 }
-function githubLogoutInline(){
-  if(!confirm("Supprimer le token GitHub enregistré dans ce navigateur ?")) return;
-  localStorage.removeItem("ghtoken");
-  GHTOKEN="";
-  alert("Token supprimé. Vous êtes maintenant invité.");
-  render();
+function updateCanonWithNew(kind, value){
+  const key=value.toLowerCase();
+  const canon=CANON[kind];
+  if(!canon.has(key)) canon.set(key,value);
 }
-
-/* ==== Filtres ==== */
-function attachFilterHandlers(){
-  const q=document.getElementById("q");
-  if(q){
-    q.addEventListener("input", debounce((e)=>{
-      FILTERS.text=e.target.value||"";
-      currentPage=1;
-      render();
-    },250));
+function bindListsEditor(){
+  const dlg=document.getElementById("lists-modal");
+  if(!dlg) return;
+  const btn=document.getElementById("lists-btn");
+  const tabs=[...dlg.querySelectorAll(".tab")];
+  const countSpan=document.getElementById("list-count");
+  const input=document.getElementById("list-input");
+  const addBtn=document.getElementById("list-add");
+  const sortBtn=document.getElementById("list-sort");
+  const dedupeBtn=document.getElementById("list-dedupe");
+  const importBtn=document.getElementById("list-import");
+  const exportBtn=document.getElementById("list-export");
+  const fileInp=document.getElementById("list-file");
+  const itemsUL=document.getElementById("list-items");
+  const saveBtn=document.getElementById("list-save");
+  const closeBtn=document.getElementById("list-close");
+  let currentKind="auteurs";
+  let WORK=[];
+  function refresh(){
+    itemsUL.innerHTML=WORK.map((v,i)=>`<li data-i="${i}"><span>${v}</span><button class="edit" data-i="${i}">✎</button><button class="del" data-i="${i}">🗑</button></li>`).join("");
+    if(countSpan) countSpan.textContent=`${WORK.length} élément(s)`;
+  }
+  function setKind(kind){
+    currentKind=kind;
+    tabs.forEach(t=>t.classList.toggle("active", t.dataset.kind===kind));
+    WORK=[...LISTS[kind]];
+    refresh();
+  }
+  function previewListsToUI(){
+    refreshDatalists();
+    refreshEpoqueOptions();
+  }
+  function renameAt(i){
+    const old=WORK[i];
+    const v=prompt("Renommer :", old);
+    if(!v) return;
+    WORK[i]=v.trim();
+    refresh();
+    previewListsToUI();
   }
 
-  const fAnnee=document.getElementById("f-annee");
-  const fNumero=document.getElementById("f-numero");
-  const fVille=document.getElementById("f-ville");
-  const fTheme=document.getElementById("f-theme");
-  const fEpoque=document.getElementById("f-epoque");
+  btn.addEventListener("click", ()=>{
+    ensureCanonMaps();
+    setKind("auteurs");
+    previewListsToUI();
+    dlg.showModal();
+  });
+  closeBtn.addEventListener("click", ()=> dlg.close());
+  tabs.forEach(t=> t.addEventListener("click", ()=> setKind(t.dataset.kind)));
 
-  if(fAnnee)  fAnnee.addEventListener("change",(e)=>{ FILTERS.annee=e.target.value||""; currentPage=1; render(); });
-  if(fNumero) fNumero.addEventListener("change",(e)=>{ FILTERS.numero=e.target.value||""; currentPage=1; render(); });
-  if(fVille)  fVille.addEventListener("change",(e)=>{ FILTERS.ville=e.target.value||""; currentPage=1; render(); });
-  if(fTheme)  fTheme.addEventListener("change",(e)=>{ FILTERS.theme=e.target.value||""; currentPage=1; render(); });
-  if(fEpoque) fEpoque.addEventListener("change",(e)=>{ FILTERS.epoque=e.target.value||""; currentPage=1; render(); });
+  addBtn.addEventListener("click", ()=>{
+    const v=(input.value||"").trim(); if(!v) return;
+    if(!WORK.some(x=>x.toLowerCase()===v.toLowerCase())) WORK.push(v);
+    input.value=""; refresh(); previewListsToUI();
+  });
+  input.addEventListener("keydown",(e)=>{ if(e.key==="Enter"){ e.preventDefault(); addBtn.click(); } });
 
-  const resetBtn=document.getElementById("reset-filters");
-  if(resetBtn){
-    resetBtn.addEventListener("click",()=>{
-      FILTERS={ text:"", annee:"", numero:"", ville:"", theme:"", epoque:"" };
-      if(q) q.value="";
-      if(fAnnee)  fAnnee.value="";
-      if(fNumero) fNumero.value="";
-      if(fVille)  fVille.value="";
-      if(fTheme)  fTheme.value="";
-      if(fEpoque) fEpoque.value="";
-      currentPage=1;
+  itemsUL.addEventListener("click",(e)=>{
+    const ed=e.target.closest(".edit"); if(ed){ renameAt(+ed.dataset.i); return; }
+    const del=e.target.closest(".del"); if(del){ const i=+del.dataset.i; WORK.splice(i,1); refresh(); previewListsToUI(); }
+  });
+  itemsUL.addEventListener("dblclick",(e)=>{
+    const li=e.target.closest("li[data-i]"); if(!li) return; renameAt(+li.dataset.i);
+  });
+
+  sortBtn.addEventListener("click", ()=>{
+    WORK.sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"})); 
+    refresh(); previewListsToUI();
+  });
+  dedupeBtn.addEventListener("click", ()=>{
+    const seen=new Set(); const out=[]; 
+    for(const v of WORK){ 
+      const k=v.toLowerCase(); 
+      if(!seen.has(k)){ seen.add(k); out.push(v); } 
+    }
+    WORK=out; refresh(); previewListsToUI();
+  });
+
+  importBtn.addEventListener("click", ()=> fileInp.click());
+  fileInp.addEventListener("change", async ()=>{
+    const f=fileInp.files?.[0]; if(!f) return;
+    const txt=await f.text(); const list=parseOneColCSV(txt);
+    WORK=uniqSorted(list);
+    refresh(); previewListsToUI();
+    fileInp.value="";
+  });
+  exportBtn.addEventListener("click", ()=>{
+    const txt=WORK.join("\n")+"\n";
+    download(`liste_${currentKind}.csv`, txt, "text/csv;charset=utf-8");
+  });
+  saveBtn.addEventListener("click", async ()=>{
+    LISTS[currentKind]=uniqSorted(WORK);
+    previewListsToUI();
+    dlg.close();
+    showToast("Listes mises à jour côté navigateur. (À sauvegarder manuellement en CSV si besoin)", "info");
+  });
+}
+
+/* ==== Nouveaux IDs HTML (boutons etc.) ==== */
+function bindNewButtons(){
+  // Bouton "Ajouter un article"
+  const addBtn = document.getElementById("add-article-btn");
+  if(addBtn) addBtn.addEventListener("click", window._openAddModal);
+  
+  // Bouton "Réinitialiser les filtres"
+  const resetBtn = document.getElementById("reset-filters");
+  if(resetBtn) resetBtn.addEventListener("click", resetAllFilters);
+  
+  // Listeners pour le formulaire d'ajout
+  const addCancel = document.getElementById("add-cancel");
+  if(addCancel) addCancel.addEventListener("click",()=>document.getElementById("add-modal")?.close());
+  
+  const addForm = document.getElementById("add-form");
+  if(addForm){
+    addForm.addEventListener("submit", async (e)=>{
+      e.preventDefault();
+      const selEl=document.getElementById("a-numero");
+      let numVal="";
+      if(selEl && selEl.tagName==="SELECT"){
+        const selVal=selEl.value;
+        numVal = (selVal==="__NEW__") ? normalizeNumeroInput(document.getElementById("a-numero-new")?.value || "") : selVal;
+      }else{
+        numVal = normalizeNumeroInput(document.getElementById("a-numero")?.value || "");
+      }
+
+      const newArticle={
+        "Année":  document.getElementById("a-annee").value.trim(),
+        "Numéro": numVal,
+        "Titre":  document.getElementById("a-titre").value.trim(),
+        "Page(s)":document.getElementById("a-pages").value.trim(),
+        "Auteur(s)":document.getElementById("a-auteurs").value.trim(),
+        "Ville(s)": document.getElementById("a-villes").value.trim(),
+        "Theme(s)": document.getElementById("a-themes").value.trim(),
+        "Epoque":   document.getElementById("a-epoque").value.trim()
+      };
+
+      if(!newArticle["Année"] || !newArticle["Numéro"] || !newArticle["Titre"]){
+        alert("Année, Numéro et Titre sont obligatoires.");
+        return;
+      }
+
+      if(!shouldWarnDuplicate(newArticle)) return;
+
+      ARTICLES.push(newArticle);
+      window._setSaveState?.("unsaved");
+      document.getElementById("add-modal").close();
+      refreshYearOptions();
+      refreshNumeroOptions();
+      refreshEpoqueOptions();
       render();
+      try{
+        await queueSave();
+        showToast("Nouvel article ajouté et sauvegardé sur GitHub","success");
+      }catch(err){
+        console.error("Erreur sauvegarde nouvel article", err);
+        showToast("Erreur de sauvegarde sur GitHub","error");
+      }
     });
   }
 }
 
-/* ==== Listes (auteurs, villes, thèmes, époques) + mini-éditeur ==== */
-function populateDatalist(id, values){
-  const dl=document.getElementById(id);
-  if(!dl) return;
-  dl.innerHTML=values.map(v=>`<option value="${v}"></option>`).join("");
-}
-
-function rebuildCanonMaps(){
-  CANON.auteurs = new Map(LISTS.auteurs.map(x => [deburr(x), x]));
-  CANON.villes  = new Map(LISTS.villes.map(x  => [deburr(x), x]));
-}
-
-function openListEditor(type){
-  const modal=document.getElementById("list-modal");
-  const title=document.getElementById("list-modal-title");
-  const textarea=document.getElementById("list-textarea");
-  const hidden=document.getElementById("list-type");
-  const info=document.getElementById("list-info");
-
-  const map={
-    auteurs: { label:"Auteurs", values:LISTS.auteurs },
-    villes:  { label:"Villes",  values:LISTS.villes  },
-    themes:  { label:"Thèmes",  values:LISTS.themes  },
-    epoques: { label:"Époques", values:LISTS.epoques }
-  }[type];
-  if(!map) return;
-
-  title.textContent=`Éditer la liste – ${map.label}`;
-  textarea.value = map.values.join("\n");
-  hidden.value = type;
-  info.textContent = "Une valeur par ligne. Les doublons seront supprimés.";
-  modal.showModal();
-}
-
-async function saveListEditor(){
-  const textarea=document.getElementById("list-textarea");
-  const hidden=document.getElementById("list-type");
-  const type=hidden.value;
-  const raw=(textarea.value||"")
-    .replace(/\r\n/g,"\n")
-    .split(/\n+/)
-    .map(x=>x.trim())
-    .filter(Boolean);
-  const values=uniq(raw);
-
-  LISTS[type]=values;
-  if(type==="auteurs") populateDatalist("dl-auteurs", values);
-  if(type==="villes")  populateDatalist("dl-villes",  values);
-  if(type==="themes")  populateDatalist("dl-themes",  values);
-  if(type==="epoques") populateDatalist("dl-epoques", values);
-  rebuildCanonMaps();
-
-  const apiMap={
-    auteurs: API_AUTH,
-    villes:  API_CITY,
-    themes:  API_THEME,
-    epoques: API_EPOCH
-  };
-  const apiUrl=apiMap[type];
-  if(!apiUrl){
-    document.getElementById("list-modal")?.close();
-    return;
-  }
-
-  if(!GHTOKEN){
-    toast("Liste modifiée localement — reconnectez-vous pour pousser sur GitHub");
-    document.getElementById("list-modal")?.close();
-    return;
-  }
-
-  try{
-    const sha = await getShaFor(apiUrl);
-    const content = btoa(unescape(encodeURIComponent(values.join("\n"))));
-    const body = {
-      message:`Mise à jour liste ${type}`,
-      content,
-      branch:GITHUB_BRANCH,
-      sha
-    };
-    const res = await fetch(apiUrl,{
-      method:"PUT",
-      headers:{
-        "Content-Type":"application/json",
-        Authorization:`token ${GHTOKEN}`
-      },
-      body:JSON.stringify(body)
-    });
-    if(!res.ok) throw new Error("Échec PUT");
-    toast("Liste mise à jour sur GitHub ✅");
-  }catch(e){
-    console.error(e);
-    toast("⚠ Échec de mise à jour de la liste sur GitHub");
-  }
-
-  document.getElementById("list-modal")?.close();
+/* ==== Aide ==== */
+function bindHelp(){
+  const dlg=document.getElementById("help-modal");
+  if(!dlg) return;
+  const btn=document.getElementById("help-btn");
+  const closeBtn=document.getElementById("help-close");
+  btn?.addEventListener("click", ()=> dlg.showModal());
+  closeBtn?.addEventListener("click", ()=> dlg.close());
 }
 
 /* ==== Initialisation ==== */
 async function init(){
   try{
-    const [rows, auteurs, villes, themes, epoquesFile] = await Promise.all([
-      fetchCSVArticles(),
-      fetchCSVList(RAW_AUTH,"auteurs"),
-      fetchCSVList(RAW_CITY,"villes"),
-      fetchCSVList(RAW_THEME,"thèmes"),
-      fetchCSVList(RAW_EPOCH,"époques")
-    ]);
+    showLoading(true);
+    await fetchCSVArticles();
+    await loadLists();
 
-    ARTICLES = rows;
-    LISTS.auteurs = auteurs;
-    LISTS.villes  = villes;
-    LISTS.themes  = themes;
+    ensureCanonMaps();
+    refreshDatalists();
+    refreshYearOptions();
+    refreshNumeroOptions();
+    refreshEpoqueOptions();
 
-    let epoques = Array.isArray(epoquesFile) ? epoquesFile : [];
-
-    if (!epoques.length) {
-      const allEpochValues = ARTICLES.map(r => {
-        const raw =
-          r["Epoque"] ??
-          r["Époque"] ??
-          r["Période"] ??
-          r["Période(s)"] ??
-          "";
-        return String(raw).replace(/\u00A0/g, " ").trim();
-      });
-
-      epoques = Array.from(
-        new Set(allEpochValues.filter(v => v && v.length > 0))
-      ).sort((a, b) => a.localeCompare(b, "fr", { numeric: true }));
-
-      console.log(`💡 ${epoques.length} époques dérivées des articles`);
-    } else {
-      console.log(`✅ ${epoques.length} époques chargées depuis epoques.csv`);
-    }
-    LISTS.epoques = epoques;
-
-    populateDatalist("dl-auteurs", LISTS.auteurs);
-    populateDatalist("dl-villes",  LISTS.villes);
-    populateDatalist("dl-themes",  LISTS.themes);
-    populateDatalist("dl-epoques", LISTS.epoques);
-    rebuildCanonMaps();
-
-    attachFilterHandlers();
-
-    document.getElementById("prev")?.addEventListener("click",()=>{
-      if(currentPage>1){ currentPage--; render(); }
-    });
-    document.getElementById("next")?.addEventListener("click",()=>{
-      currentPage++; render();
-    });
-
-    const addBtn=document.getElementById("add-article-btn");
-    const addModal=document.getElementById("add-modal");
-    const addForm=document.getElementById("add-form");
-    const addCancel=document.getElementById("add-cancel");
-    if(addBtn && addModal){
-      addBtn.addEventListener("click",()=>{
-        addForm?.reset();
-        refreshAddNumeroOptions();
-        addModal.showModal();
-      });
-    }
-    if(addCancel && addModal){
-      addCancel.addEventListener("click",()=>addModal.close());
-    }
-    if(addForm){
-      addForm.addEventListener("submit",(e)=>{
-        e.preventDefault();
-        addRowFromForm(addForm);
-      });
-      const aYear=addForm.querySelector("#a-annee");
-      if(aYear){
-        aYear.addEventListener("change", refreshAddNumeroOptions);
-        aYear.addEventListener("input",  refreshAddNumeroOptions);
-      }
-    }
-
-    document.getElementById("export-csv-filtre")?.addEventListener("click", exportCurrent);
-    document.getElementById("export-csv-all")?.addEventListener("click", exportAll);
-
-    document.getElementById("login-btn")?.addEventListener("click", githubLoginInline);
-    document.getElementById("logout-btn")?.addEventListener("click", githubLogoutInline);
-
-    document.getElementById("edit-authors")?.addEventListener("click", ()=>openListEditor("auteurs"));
-    document.getElementById("edit-cities") ?.addEventListener("click", ()=>openListEditor("villes"));
-    document.getElementById("edit-themes") ?.addEventListener("click", ()=>openListEditor("themes"));
-    document.getElementById("edit-epochs") ?.addEventListener("click", ()=>openListEditor("epoques"));
-
-    document.getElementById("list-save")?.addEventListener("click", saveListEditor);
-    document.getElementById("list-cancel")?.addEventListener("click",()=>document.getElementById("list-modal")?.close());
-
+    bindFilters(); 
+    bindSorting(); 
+    bindPager(); 
+    bindExports(); 
+    bindHelp(); 
+    bindAuth(); 
+    bindListsEditor();
+    bindNewButtons(); // ← NOUVEAU : gère les nouveaux IDs HTML
+    setupSaveBadge();
     render();
+    
     console.log("✅ Application initialisée avec succès");
-  }catch(e){
-    console.error("Erreur init:",e);
-    toast("❌ Erreur lors de l'initialisation de l'application.");
+  }catch(err){
+    console.error("INIT FAILED", err);
+    alert("Erreur de chargement de la page. Voir la console pour les détails.");
+  }finally{
+    showLoading(false);
   }
 }
-
-document.addEventListener("DOMContentLoaded", init);
+if(document.readyState==="loading"){ document.addEventListener("DOMContentLoaded", init); } else { init(); }
