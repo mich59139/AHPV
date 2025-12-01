@@ -7,6 +7,7 @@
 // v2.x : Support des nouveaux IDs HTML (add-article-btn, reset-filters, etc.)
 //        Époques dérivées des articles si epoques.csv manquant ou vide
 //        Message "Aucun article ne correspond aux filtres" si page vide
+//        *** Nouveau : détection automatique du séparateur (',' ou ';') + parsing CSV avec guillemets ***
 
 /* ==== Config à adapter si besoin ==== */
 const GITHUB_USER   = "mich59139";
@@ -67,6 +68,9 @@ let SAVE_QUEUE = [];
 let IS_SAVING  = false;
 let AUTO_SAVE_SILENT = false;
 
+// Séparateur CSV détecté (';' ou ','), par défaut virgule (ton fichier actuel)
+let CSV_DELIM = ",";
+
 /* ==== Utilitaires ==== */
 function deburr(str){
   if(!str) return "";
@@ -94,32 +98,90 @@ function toast(msg){
 }
 
 /* ==== CSV helpers ==== */
-function parseCSV(text){
-  // CSV simple, séparateur ";", guillemets "
-  const lines=text.replace(/\r\n/g,"\n").split(/\n+/).filter(Boolean);
-  if(!lines.length) return [];
-  const headers=lines[0].split(";").map(h=>h.trim());
-  return lines.slice(1).map(line=>{
-    const cols=line.split(";"); // simple
-    const obj={};
-    headers.forEach((h,i)=>obj[h]=cols[i]!==undefined ? cols[i].trim(): "");
-    return obj;
-  });
+
+// découpe UNE ligne CSV en tenant compte des guillemets et du séparateur
+function splitCSVLine(line, delimiter){
+  const result = [];
+  let cur = "";
+  let inQuotes = false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(c === '"'){
+      if(inQuotes && i+1<line.length && line[i+1]==='"'){
+        // guillemet échappé ""
+        cur += '"';
+        i++;
+      }else{
+        inQuotes = !inQuotes;
+      }
+    }else if(c === delimiter && !inQuotes){
+      result.push(cur);
+      cur = "";
+    }else{
+      cur += c;
+    }
+  }
+  result.push(cur);
+  return result;
 }
+
+function detectDelimiter(headerLine){
+  const commaCount = (headerLine.match(/,/g) || []).length;
+  const semiCount  = (headerLine.match(/;/g) || []).length;
+  if(semiCount && !commaCount) return ";";
+  if(commaCount && !semiCount) return ",";
+  if(semiCount > commaCount)   return ";";
+  return ",";
+}
+
+function parseCSV(text){
+  const rawLines = text.replace(/\r\n/g,"\n").split("\n").filter(l=>l.trim()!=="");
+  if(!rawLines.length) return [];
+
+  // détecter le séparateur à partir de la 1ère ligne
+  const headerLine = rawLines[0];
+  const delim = detectDelimiter(headerLine);
+  CSV_DELIM = delim; // on mémorise pour l'écriture
+
+  const headers = splitCSVLine(headerLine, delim).map(h=>h.trim());
+  const rows = [];
+
+  for(let i=1;i<rawLines.length;i++){
+    const line = rawLines[i];
+    if(!line.trim()) continue;
+    const cols = splitCSVLine(line, delim);
+    const obj = {};
+    headers.forEach((h,idx)=>{
+      obj[h] = cols[idx] !== undefined ? cols[idx].trim() : "";
+    });
+    rows.push(obj);
+  }
+
+  return rows;
+}
+
 function toCSV(rows){
   const headers=[
     "Année","Numéro","Titre","Page(s)",
     "Auteur(s)","Ville(s)","Theme(s)","Epoque"
   ];
-  const lines=[headers.join(";")];
+  const delim = CSV_DELIM || ",";
+
+  const esc = (value)=>{
+    let v = value ?? "";
+    v = String(v);
+    if(v.includes('"')) v = v.replace(/"/g,'""');
+    if(v.includes(delim) || v.includes("\n") || v.includes('"')){
+      v = `"${v}"`;
+    }
+    return v;
+  };
+
+  const lines = [];
+  lines.push(headers.join(delim));
   rows.forEach(r=>{
-    const row=headers.map(h=>{
-      let v=r[h] ?? "";
-      v=(""+v).replace(/"/g,'""');
-      if(v.includes(";") || v.includes('"')) v=`"${v}"`;
-      return v;
-    }).join(";");
-    lines.push(row);
+    const line = headers.map(h=>esc(r[h])).join(delim);
+    lines.push(line);
   });
   return lines.join("\n");
 }
@@ -315,8 +377,6 @@ function render(){
 
 /* ==== Inline edit ==== */
 
-// Sur mobile : un simple tap sur la ligne déclenche l'édition inline.
-// Sur desktop : double-clic ouvre aussi l'édition.
 window._editRow = (idx) => {
   try {
     if (matchMedia("(max-width:800px)").matches) {
@@ -331,7 +391,6 @@ window._inlineEdit = (idx) => {
   editingIndex = idx;
   render();
 
-  // focus sur le titre par défaut
   setTimeout(() => document.getElementById("ei-titre")?.focus(), 0);
 
   const ids = [
@@ -348,9 +407,6 @@ window._inlineEdit = (idx) => {
   ids.forEach((id) => {
     const el = document.getElementById(id);
     if (!el) return;
-
-    // Plus d'auto-enregistrement silencieux sur blur/change :
-    // on valide seulement avec Entrée ou le bouton 💾
     el.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
@@ -387,8 +443,6 @@ window._inlineSave = async () => {
 
   const updated = normaliseRowFields(updatedRaw);
 
-  // On met à jour la ligne dans ARTICLES puis on déclenche la même
-  // chaîne de sauvegarde que pour les autres actions
   ARTICLES[i] = updated;
   editingIndex = -1;
   render();
@@ -416,7 +470,6 @@ function refreshAddNumeroOptions(){
   if(!year || !nums.length){
     suggestion = "";
   }else{
-    // on propose le plus grand + 1
     const last = nums[nums.length-1];
     const n = parseInt(last,10);
     if(!isNaN(n)) suggestion = `${base} ${n+1}`;
@@ -424,7 +477,6 @@ function refreshAddNumeroOptions(){
   if(span) span.textContent = suggestion || "";
 }
 
-/* Ajout complet */
 function addRowFromForm(form){
   const getVal=(id)=>form.querySelector("#"+id)?.value?.trim() || "";
   const raw={
@@ -445,7 +497,6 @@ function addRowFromForm(form){
   enqueueSave("Ajout d'article");
 }
 
-/* Suppression */
 window._deleteRow=(idx)=>{
   if(!confirm("Supprimer cet article ?")) return;
   if(idx<0 || idx>=ARTICLES.length) return;
@@ -537,10 +588,8 @@ async function saveToGitHubRaw(csvText, message="Mise à jour catalogue"){
 }
 
 async function saveToGitHubMerged(csvText, message="Mise à jour catalogue (merge distant)"){
-  // pour la connexion initiale : on relit le fichier, on merge, puis on pousse.
   const remoteTxt = await fetchText(RAW_ART);
   const remoteRows = parseCSV(remoteTxt);
-  // on prend la version locale comme vérité pour les lignes communes (pas de merge fin ici)
   const csv = csvText || toCSV(ARTICLES.length ? ARTICLES : remoteRows);
   await saveToGitHubRaw(csv, message);
 }
@@ -551,7 +600,6 @@ function enqueueSave(message="Mise à jour catalogue"){
     setSaveBadge("error");
     return;
   }
-  // on stocke juste le message, toutes les saves écrivent l'état actuel d'ARTICLES
   SAVE_QUEUE.push({ message });
   if(!IS_SAVING) runQueuedSave();
 }
@@ -560,7 +608,7 @@ async function runQueuedSave(){
   if(IS_SAVING) return;
   IS_SAVING = true;
   while(SAVE_QUEUE.length){
-    const payload = SAVE_QUEUE.pop(); // on vide la file, seule la dernière nous intéresse
+    const payload = SAVE_QUEUE.pop();
     try{
       setSaveBadge("pending");
       await saveToGitHubRaw(toCSV(ARTICLES), payload.message);
@@ -690,7 +738,6 @@ async function saveListEditor(){
   if(type==="epoques") populateDatalist("dl-epoques", values);
   rebuildCanonMaps();
 
-  // On pousse la liste sur GitHub
   const apiMap={
     auteurs: API_AUTH,
     villes:  API_CITY,
@@ -752,9 +799,6 @@ async function init(){
     LISTS.villes  = villes;
     LISTS.themes  = themes;
 
-    // Époques :
-    // - si epoques.csv existe et contient des valeurs : on les utilise
-    // - sinon : on dérive automatiquement les époques à partir des articles
     let epoques = Array.isArray(epoquesFile) ? epoquesFile : [];
 
     if (!epoques.length) {
@@ -765,7 +809,6 @@ async function init(){
           r["Période"] ??
           r["Période(s)"] ??
           "";
-        // remplace les espaces insécables par des espaces normaux, puis trim
         return String(raw).replace(/\u00A0/g, " ").trim();
       });
 
@@ -787,7 +830,6 @@ async function init(){
 
     attachFilterHandlers();
 
-    // Pagination
     document.getElementById("prev")?.addEventListener("click",()=>{
       if(currentPage>1){ currentPage--; render(); }
     });
@@ -795,7 +837,6 @@ async function init(){
       currentPage++; render();
     });
 
-    // Ajout
     const addBtn=document.getElementById("add-article-btn");
     const addModal=document.getElementById("add-modal");
     const addForm=document.getElementById("add-form");
@@ -822,15 +863,12 @@ async function init(){
       }
     }
 
-    // Export
     document.getElementById("export-csv-filtre")?.addEventListener("click", exportCurrent);
     document.getElementById("export-csv-all")?.addEventListener("click", exportAll);
 
-    // Login / Logout
     document.getElementById("login-btn")?.addEventListener("click", githubLoginInline);
     document.getElementById("logout-btn")?.addEventListener("click", githubLogoutInline);
 
-    // Listes
     document.getElementById("edit-authors")?.addEventListener("click", ()=>openListEditor("auteurs"));
     document.getElementById("edit-cities") ?.addEventListener("click", ()=>openListEditor("villes"));
     document.getElementById("edit-themes") ?.addEventListener("click", ()=>openListEditor("themes"));
@@ -847,5 +885,4 @@ async function init(){
   }
 }
 
-// Lancement
 document.addEventListener("DOMContentLoaded", init);
