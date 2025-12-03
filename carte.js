@@ -42,6 +42,7 @@ const VILLE_COORDINATES = {
     'Séchilienne': [45.054, 5.835],
     'Uriage': [45.147, 5.826],
     'Varces': [45.092, 5.676],
+    'Vaulnaveys': [45.093, 5.810],
     'Vaulnaveys le bas': [45.107, 5.811],
     'Vaulnaveys le haut': [45.115, 5.825],
     'Vizille': [45.073, 5.773]
