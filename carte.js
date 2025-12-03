@@ -1,17 +1,16 @@
 // ============================================
 // AHPV - Carte Interactive
-// v1.9 - Compatible avec système auto-update des CSV
-// ============================================
-// Configuration & Variables globales
+// v1.9 - Corrigé et Optimisé
 // ============================================
 
+// Configuration & Variables globales
 const CONFIG = {
     mapCenter: [45.073, 5.773], // Vizille
     mapZoom: 11,
     csvPath: 'data/articles.csv'
 };
 
-// Coordonnées GPS des principales villes
+// Coordonnées GPS (identiques à votre version)
 const VILLE_COORDINATES = {
     'Allemond (38114)': [45.132, 6.040],
     "Bourg d'Oisans": [45.056, 6.030],
@@ -53,6 +52,7 @@ let markers = [];
 let markerClusterGroup;
 let allArticles = [];
 let filteredArticles = [];
+let currentEditIndex = -1; // Pour stocker l'index en cours d'édition
 
 // ============================================
 // Initialisation
@@ -62,11 +62,16 @@ document.addEventListener('DOMContentLoaded', () => {
     initMap();
     loadData();
     initEventListeners();
+    initModalListeners(); // Nouvelle fonction pour gérer les modales proprement
     
     // Ouvrir automatiquement le panneau de filtres
     setTimeout(() => {
-        document.querySelector('.sidebar').classList.add('active');
-        document.querySelector('.btn-toggle-sidebar').style.left = 'calc(var(--sidebar-width) + 20px)';
+        const sidebar = document.querySelector('.sidebar');
+        const toggleBtn = document.querySelector('.btn-toggle-sidebar');
+        if(sidebar && toggleBtn) {
+            sidebar.classList.add('active');
+            toggleBtn.style.left = 'calc(var(--sidebar-width) + 20px)';
+        }
     }, 500);
 });
 
@@ -81,13 +86,11 @@ function initMap() {
         zoomControl: false
     });
 
-    // Fond de carte
     L.tileLayer('https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
         attribution: '&copy; contributeurs OpenStreetMap',
         maxZoom: 19
     }).addTo(map);
 
-    // Contrôles
     L.control.zoom({ position: 'topright' }).addTo(map);
 
     markerClusterGroup = L.markerClusterGroup({
@@ -98,7 +101,7 @@ function initMap() {
     });
     map.addLayer(markerClusterGroup);
 
-    // Bouton "Accueil"
+    // Bouton Accueil
     L.Control.Home = L.Control.extend({
         onAdd: function () {
             const btn = L.DomUtil.create('button', 'btn btn-secondary leaflet-bar-part');
@@ -113,22 +116,18 @@ function initMap() {
             btn.style.fontSize = '18px';
             btn.style.borderRadius = '8px';
             
-            btn.onclick = () => {
+            btn.onclick = (e) => {
+                L.DomEvent.stopPropagation(e);
                 map.setView(CONFIG.mapCenter, CONFIG.mapZoom);
             };
             return btn;
         },
-
         onRemove: function () {}
     });
 
-    L.control.home = function (opts) {
-        return new L.Control.Home(opts);
-    };
-
+    L.control.home = function (opts) { return new L.Control.Home(opts); };
     L.control.home({ position: 'topright' }).addTo(map);
 
-    // Legende
     initLegend();
 }
 
@@ -138,23 +137,21 @@ function initMap() {
 
 function initLegend() {
     const legend = L.control({ position: 'bottomleft' });
-
     legend.onAdd = function () {
         const div = L.DomUtil.create('div', 'info legend');
         div.innerHTML = `
             <div style="font-weight:bold; margin-bottom:6px;">Légende</div>
             <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
                 <span style="width:16px; height:16px; border-radius:50%; background:#6b8a21; display:inline-block;"></span>
-                <span>Ville du Pays vizillois</span>
+                <span>Pays vizillois</span>
             </div>
             <div style="display:flex; align-items:center; gap:6px;">
-                <span style="width:16px; height:16px; border-radius:50%; background:#888; display:inline-block;"></span>
+                <span style="width:16px; height:16px; border-radius:50%; background:#555; display:inline-block;"></span>
                 <span>Autre localisation</span>
             </div>
         `;
         return div;
     };
-
     legend.addTo(map);
 }
 
@@ -168,32 +165,33 @@ function loadData() {
         header: true,
         skipEmptyLines: true,
         complete: (results) => {
-            allArticles = results.data;
-
-            // Nettoyer les champs pour éviter les undefined
-            allArticles = allArticles.map(article => ({
+            // Nettoyage initial
+            allArticles = results.data.map(article => ({
                 ...article,
                 Titre: article.Titre || '',
                 'Auteur(s)': article['Auteur(s)'] || '',
                 'Ville(s)': article['Ville(s)'] || '',
                 'Theme(s)': article['Theme(s)'] || '',
-                'Epoque': article['Epoque'] || ''
+                'Epoque': article['Epoque'] || '',
+                'Année': article['Année'] || '',
+                'Numero': article['Numero'] || article['Numéro'] || ''
             }));
 
             filteredArticles = allArticles;
             populateFilters();
-            applyFilters();
+            applyFilters(); // Ceci déclenchera processData()
             hideLoading();
         },
         error: (error) => {
-            console.error('Erreur de chargement CSV:', error);
+            console.error('Erreur CSV:', error);
             hideLoading();
+            alert("Erreur de chargement du fichier CSV.");
         }
     });
 }
 
 // ============================================
-// Filtres
+// Filtres (Peuplement)
 // ============================================
 
 function populateFilters() {
@@ -213,15 +211,15 @@ function populateVillesFilters() {
     });
     
     const container = document.getElementById('villesFilters');
-    // Construction avec comptage (pour l'affichage)
+    if(!container) return;
+    container.innerHTML = ''; // Reset pour éviter doublons
+
     const villesArray = Array.from(villesSet);
     const villesWithCount = villesArray.map(ville => {
-        const count = allArticles.filter(a => 
-            a['Ville(s)']?.includes(ville)
-        ).length;
+        const count = allArticles.filter(a => a['Ville(s)']?.includes(ville)).length;
         return { ville, count };
     });
-    // Tri alphabétique par nom de ville
+    
     villesWithCount.sort((a, b) => a.ville.localeCompare(b.ville, 'fr', { sensitivity: 'base' }));
     
     villesWithCount.forEach(({ ville, count }) => {
@@ -232,38 +230,11 @@ function populateVillesFilters() {
         container.appendChild(option);
     });
     
-    // Événement change
     container.addEventListener('change', applyFilters);
-}
-
-function createFilterOption(value, count, type) {
-    const div = document.createElement('div');
-    div.className = 'filter-option';
-    
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.id = `${type}-${value}`;
-    checkbox.value = value;
-    checkbox.checked = true;
-    
-    const label = document.createElement('label');
-    label.htmlFor = checkbox.id;
-    label.textContent = value;
-    
-    const countSpan = document.createElement('span');
-    countSpan.className = 'count';
-    countSpan.textContent = count;
-    
-    div.appendChild(checkbox);
-    div.appendChild(label);
-    div.appendChild(countSpan);
-    
-    return div;
 }
 
 function populateThemesFilters() {
     const themesCount = {};
-    
     allArticles.forEach(article => {
         const themes = article['Theme(s)']?.split(',').map(t => t.trim()) || [];
         themes.forEach(theme => {
@@ -273,10 +244,11 @@ function populateThemesFilters() {
     });
 
     const container = document.getElementById('themesFilters');
+    if(!container) return;
     container.innerHTML = '';
     
     Object.entries(themesCount)
-        .sort((a, b) => b[1] - a[1]) // tri par nombre d’articles
+        .sort((a, b) => b[1] - a[1])
         .forEach(([theme, count]) => {
             const option = document.createElement('option');
             option.value = theme;
@@ -285,12 +257,11 @@ function populateThemesFilters() {
             container.appendChild(option);
         });
     
-    document.getElementById('themesFilters').addEventListener('change', applyFilters);
+    container.addEventListener('change', applyFilters);
 }
 
 function populateEpoquesFilters() {
     const epoquesCount = {};
-    
     allArticles.forEach(article => {
         const epoque = article['Epoque']?.trim();
         if (epoque && epoque !== '-') {
@@ -299,6 +270,7 @@ function populateEpoquesFilters() {
     });
 
     const container = document.getElementById('epoquesFilters');
+    if(!container) return;
     container.innerHTML = '';
     
     Object.entries(epoquesCount)
@@ -311,58 +283,55 @@ function populateEpoquesFilters() {
             container.appendChild(option);
         });
     
-    document.getElementById('epoquesFilters').addEventListener('change', applyFilters);
+    container.addEventListener('change', applyFilters);
 }
 
 // ============================================
-// Application des filtres
+// Logique de Filtrage
 // ============================================
 
 function applyFilters() {
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const searchInput = document.getElementById('searchInput');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
     
-    // Déterminer le mode actif
-    const activeMode = document.querySelector('input[name="filterMode"]:checked').value;
+    const modeInput = document.querySelector('input[name="filterMode"]:checked');
+    const activeMode = modeInput ? modeInput.value : 'none';
     
-    // Récupérer les filtres selon le mode
     let selectedThemes = [];
     let selectedEpoques = [];
     let selectedVilles = [];
     
     if (activeMode === 'theme') {
-        selectedThemes = Array.from(document.getElementById('themesFilters').selectedOptions)
-            .map(opt => opt.value);
+        const el = document.getElementById('themesFilters');
+        if(el) selectedThemes = Array.from(el.selectedOptions).map(opt => opt.value);
     } else if (activeMode === 'epoque') {
-        selectedEpoques = Array.from(document.getElementById('epoquesFilters').selectedOptions)
-            .map(opt => opt.value);
+        const el = document.getElementById('epoquesFilters');
+        if(el) selectedEpoques = Array.from(el.selectedOptions).map(opt => opt.value);
     } else if (activeMode === 'ville') {
-        selectedVilles = Array.from(document.getElementById('villesFilters').selectedOptions)
-            .map(opt => opt.value);
+        const el = document.getElementById('villesFilters');
+        if(el) selectedVilles = Array.from(el.selectedOptions).map(opt => opt.value);
     }
     
-    // Filtrage initial sur base texte + mode actif
     filteredArticles = allArticles.filter(article => {
-        // Recherche texte
+        // Recherche
         if (searchTerm) {
             const searchableText = `${article.Titre} ${article['Auteur(s)']} ${article['Theme(s)']}`.toLowerCase();
             if (!searchableText.includes(searchTerm)) return false;
         }
         
-        // Thèmes (seulement si mode actif)
+        // Filtres conditionnels
         if (selectedThemes.length > 0) {
-            const articleThemes = article['Theme(s)']?.split(',').map(t => t.trim()) || [];
-            if (!articleThemes.some(t => selectedThemes.includes(t))) return false;
+            const ts = article['Theme(s)']?.split(',').map(t => t.trim()) || [];
+            if (!ts.some(t => selectedThemes.includes(t))) return false;
         }
         
-        // Époques (seulement si mode actif)
         if (selectedEpoques.length > 0) {
             if (!selectedEpoques.includes(article['Epoque']?.trim())) return false;
         }
         
-        // Villes (seulement si mode actif)
         if (selectedVilles.length > 0) {
-            const articleVilles = article['Ville(s)']?.split(',').map(v => v.trim()) || [];
-            if (!articleVilles.some(v => selectedVilles.includes(v))) return false;
+            const vs = article['Ville(s)']?.split(',').map(v => v.trim()) || [];
+            if (!vs.some(v => selectedVilles.includes(v))) return false;
         }
         
         return true;
@@ -373,47 +342,35 @@ function applyFilters() {
 }
 
 function resetFilters() {
-    // Réinitialiser la recherche
+    // Reset UI
     document.getElementById('searchInput').value = '';
+    const radioNone = document.querySelector('input[name="filterMode"][value="none"]');
+    if(radioNone) radioNone.checked = true;
     
-    // Réinitialiser le mode à "Toutes les villes"
-    document.querySelector('input[name="filterMode"][value="none"]').checked = true;
+    // Cacher les blocs
+    ['villesFilterGroup', 'themesFilterGroup', 'epoquesFilterGroup'].forEach(id => {
+        document.getElementById(id).style.display = 'none';
+    });
     
-    // Cacher tous les filtres
-    document.getElementById('villesFilterGroup').style.display = 'none';
-    document.getElementById('themesFilterGroup').style.display = 'none';
-    document.getElementById('epoquesFilterGroup').style.display = 'none';
+    // Resélectionner toutes les options
+    ['villesFilters', 'themesFilters', 'epoquesFilters'].forEach(id => {
+        const select = document.getElementById(id);
+        if(select) Array.from(select.options).forEach(opt => opt.selected = true);
+    });
     
-    // Tout sélectionner dans chaque select
-    Array.from(
-        document.getElementById('villesFilters').options
-    ).forEach(opt => opt.selected = true);
-    Array.from(
-        document.getElementById('themesFilters').options
-    ).forEach(opt => opt.selected = true);
-    Array.from(
-        document.getElementById('epoquesFilters').options
-    ).forEach(opt => opt.selected = true);
-    
-    filteredArticles = allArticles;
-    processData();
-    updateStats();
+    applyFilters();
 }
 
 // ============================================
-// Traitement des données & génération des marqueurs
+// Carte & Marqueurs
 // ============================================
 
 function processData() {
-    // On tient compte du mode de filtrage actif pour décider
-    // quelles villes seront réellement matérialisées par un marqueur.
     let selectedVilles = [];
     let activeMode = 'none';
 
     const modeInput = document.querySelector('input[name="filterMode"]:checked');
-    if (modeInput) {
-        activeMode = modeInput.value;
-    }
+    if (modeInput) activeMode = modeInput.value;
 
     if (activeMode === 'ville') {
         const villesSelect = document.getElementById('villesFilters');
@@ -422,64 +379,36 @@ function processData() {
         }
     }
 
-    // Grouper les articles par ville (avec prise en compte du mode)
     const articlesByVille = {};
 
     filteredArticles.forEach(article => {
-        const villes = (article['Ville(s)'] || '')
-            .split(',')
-            .map(v => v.trim())
-            .filter(Boolean);
-
-        // Par défaut, on utilise toutes les villes de l'article
+        const villes = (article['Ville(s)'] || '').split(',').map(v => v.trim()).filter(Boolean);
         let villesForMarkers = villes;
 
-        // Si on est en mode "Par ville" avec une sélection,
-        // on ne garde que les villes sélectionnées.
         if (activeMode === 'ville' && selectedVilles.length > 0) {
             villesForMarkers = villes.filter(v => selectedVilles.includes(v));
         }
 
         villesForMarkers.forEach(ville => {
-            if (!ville || ville === '-') return;
-
-            if (!articlesByVille[ville]) {
-                articlesByVille[ville] = [];
-            }
+            if (!ville || ville === '-' || !VILLE_COORDINATES[ville]) return;
+            if (!articlesByVille[ville]) articlesByVille[ville] = [];
             articlesByVille[ville].push(article);
         });
     });
 
-    // Créer les marqueurs
     markerClusterGroup.clearLayers();
     markers = [];
 
     for (const [ville, articles] of Object.entries(articlesByVille)) {
-        const coords = VILLE_COORDINATES[ville];
-        if (coords) {
-            createMarker(ville, articles, coords);
-        }
+        createMarker(ville, articles, VILLE_COORDINATES[ville]);
     }
 }
 
 function createMarker(ville, articles, coords) {
-    const isPaysVizille = 
-        ville === 'Vizille' ||
-        ville === 'Jarrie' ||
-        ville === 'Séchilienne' ||
-        ville === 'Saint Georges de Commiers' ||
-        ville === 'Champ sur Drac' ||
-        ville === 'Notre Dame de Mésage' ||
-        ville === 'Saint Pierre de Mésage' ||
-        ville === 'Vaulnaveys le bas' ||
-        ville === 'Vaulnaveys le haut' ||
-        ville === 'Uriage' ||
-        ville === 'Champagnier' ||
-        ville === 'Bresson' ||
-        ville === 'Herbeys' ||
-        ville === 'Varces' ||
-        ville === 'Claix' ||
-        ville === 'Pays vizillois';
+    const isPaysVizille = ['Vizille','Jarrie','Séchilienne','Saint Georges de Commiers',
+    'Champ sur Drac','Notre Dame de Mésage','Saint Pierre de Mésage',
+    'Vaulnaveys le bas','Vaulnaveys le haut','Uriage','Champagnier',
+    'Bresson','Herbeys','Varces','Claix','Pays vizillois'].includes(ville);
 
     const markerHtml = `
         <div class="custom-marker" style="background:${isPaysVizille ? '#6b8a21' : '#555'};">
@@ -498,26 +427,22 @@ function createMarker(ville, articles, coords) {
     });
 
     const marker = L.marker(coords, { icon });
-    
-    marker.on('click', () => {
-        showInfoPanel(ville, articles);
-    });
-    
+    marker.on('click', () => showInfoPanel(ville, articles));
     markerClusterGroup.addLayer(marker);
     markers.push(marker);
 }
 
 // ============================================
-// Panneau d'infos
+// Panel Latéral (Info Articles)
 // ============================================
 
 function showInfoPanel(ville, articles) {
     const panel = document.getElementById('infoPanel');
-    const title = document.getElementById('infoTitle');
-    const content = document.getElementById('infoContent');
+    const title = document.getElementById('infoPanelTitle'); // ID corrigé pour matcher le HTML
+    const content = document.getElementById('infoPanelContent'); // ID corrigé pour matcher le HTML
     
-    title.textContent = `${ville} — ${articles.length} article(s)`;
-    content.innerHTML = generateArticlesHtml(articles);
+    if(title) title.textContent = `${ville} — ${articles.length} article(s)`;
+    if(content) content.innerHTML = generateArticlesHtml(articles);
     
     panel.classList.add('active');
 }
@@ -531,27 +456,25 @@ function generateArticlesHtml(articles) {
     const maxDisplay = 30;
     
     articles.slice(0, maxDisplay).forEach((article, index) => {
-        const numero = article.Numero || article['Numéro'] || '';
-        const pages = article['Page(s)'] || '';
-        const auteurs = article['Auteur(s)'] || '';
-        const themes = article['Theme(s)'] || '';
-        const epoque = article['Epoque'] || '';
-        
-        const articleId = `article-${index}`;
+        // On cherche l'index global pour l'édition plus tard
+        const globalIndex = allArticles.indexOf(article);
+        const articleId = `article-card-${index}`;
         
         html += `
             <div class="article-card" id="${articleId}">
                 <h4>${article.Titre}</h4>
                 <div class="article-meta">
-                    <span>🗓️ ${article.Année || ''}</span>
-                    <span>📘 ${numero}</span>
-                    ${pages ? `<span>📄 ${pages}</span>` : ''}
-                    ${auteurs ? `<span>✍️ ${auteurs}</span>` : ''}
+                    <span>🗓️ ${article['Année']}</span>
+                    <span>📘 ${article.Numero}</span>
+                    ${article['Page(s)'] ? `<span>📄 ${article['Page(s)']}</span>` : ''}
                 </div>
-                ${themes ? `<div class="article-themes">🏷️ ${themes}</div>` : ''}
-                ${epoque ? `<div class="article-themes">⏳ ${epoque}</div>` : ''}
+                 <div class="article-meta" style="margin-top:4px;">
+                     ${article['Auteur(s)'] ? `<span>✍️ ${article['Auteur(s)']}</span>` : ''}
+                 </div>
+                ${article['Theme(s)'] ? `<div class="article-themes">🏷️ ${article['Theme(s)']}</div>` : ''}
+                
                 <div class="article-actions">
-                    <button class="btn-edit" onclick="editArticle('${articleId}', ${index})">
+                    <button class="btn-edit" onclick="openEditModal(${globalIndex})">
                         ✏️ Modifier
                     </button>
                 </div>
@@ -560,138 +483,224 @@ function generateArticlesHtml(articles) {
     });
     
     if (articles.length > maxDisplay) {
-        html += `<p class="muted" style="text-align:center; margin-top:16px; padding:12px; background:var(--bg); border-radius:10px;">
-            <strong>... et ${articles.length - maxDisplay} autres articles</strong><br>
-            <small>Utilisez les filtres pour affiner votre recherche</small>
-        </p>`;
+        html += `<p class="muted" style="text-align:center;">... et ${articles.length - maxDisplay} autres articles.</p>`;
     }
-    
     return html;
+}
+
+// ============================================
+// Gestion des Événements
+// ============================================
+
+function initEventListeners() {
+    // Sidebar Toggle
+    const toggleBtn = document.getElementById('toggleSidebar');
+    const sidebar = document.getElementById('sidebar');
+    if(toggleBtn && sidebar) {
+        toggleBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+            if (sidebar.classList.contains('active')) {
+                toggleBtn.style.left = 'calc(var(--sidebar-width) + 20px)';
+            } else {
+                toggleBtn.style.left = '20px';
+            }
+        });
+    }
+
+    // Panel Close
+    const closeInfoBtn = document.getElementById('closeInfo');
+    if(closeInfoBtn) closeInfoBtn.addEventListener('click', hideInfoPanel);
+    
+    const backBtn = document.getElementById('backFromPanel');
+    if(backBtn) backBtn.addEventListener('click', hideInfoPanel);
+
+    // Recherche
+    const searchInput = document.getElementById('searchInput');
+    if(searchInput) searchInput.addEventListener('input', debounce(applyFilters, 300));
+
+    // Modes
+    document.querySelectorAll('input[name="filterMode"]').forEach(radio => {
+        radio.addEventListener('change', onFilterModeChange);
+    });
+
+    // Reset (Correction ID)
+    const resetBtn = document.getElementById('resetFilters'); // ID corrigé
+    if(resetBtn) resetBtn.addEventListener('click', resetFilters);
+
+    // Sélection multiple helpers
+    setupMultiSelectHelpers('Themes', 'themesFilters');
+    setupMultiSelectHelpers('Epoques', 'epoquesFilters');
+    setupMultiSelectHelpers('Villes', 'villesFilters');
+}
+
+function setupMultiSelectHelpers(name, selectId) {
+    const checkBtn = document.getElementById(`checkAll${name}`);
+    const uncheckBtn = document.getElementById(`uncheckAll${name}`);
+    
+    if(checkBtn) {
+        checkBtn.addEventListener('click', () => {
+            const select = document.getElementById(selectId);
+            Array.from(select.options).forEach(opt => opt.selected = true);
+            applyFilters();
+        });
+    }
+    if(uncheckBtn) {
+        uncheckBtn.addEventListener('click', () => {
+            const select = document.getElementById(selectId);
+            Array.from(select.options).forEach(opt => opt.selected = false);
+            applyFilters();
+        });
+    }
+}
+
+function onFilterModeChange() {
+    const activeMode = document.querySelector('input[name="filterMode"]:checked').value;
+    document.getElementById('villesFilterGroup').style.display = activeMode === 'ville' ? 'block' : 'none';
+    document.getElementById('themesFilterGroup').style.display = activeMode === 'theme' ? 'block' : 'none';
+    document.getElementById('epoquesFilterGroup').style.display = activeMode === 'epoque' ? 'block' : 'none';
+    applyFilters();
+}
+
+// ============================================
+// Modales et Édition
+// ============================================
+
+function initModalListeners() {
+    // Aide
+    const btnHelp = document.getElementById('btnHelp');
+    const helpModal = document.getElementById('helpModal');
+    const closeHelp = document.getElementById('closeHelp');
+    
+    if(btnHelp) btnHelp.addEventListener('click', () => helpModal.showModal());
+    if(closeHelp) closeHelp.addEventListener('click', () => helpModal.close());
+
+    // Stats
+    const btnStats = document.getElementById('btnStats');
+    const statsModal = document.getElementById('statsModal');
+    const closeStats = document.getElementById('closeStats');
+
+    if(btnStats) btnStats.addEventListener('click', () => {
+        populateStatsContent(); // Générer le HTML des stats
+        statsModal.showModal();
+    });
+    if(closeStats) closeStats.addEventListener('click', () => statsModal.close());
+
+    // Édition (Setup du formulaire une seule fois)
+    const editModal = document.getElementById('editModal');
+    const closeEdit = document.getElementById('closeEditModal');
+    const cancelEdit = document.getElementById('cancelEdit');
+    const editForm = document.getElementById('editForm');
+
+    if(closeEdit) closeEdit.addEventListener('click', () => editModal.close());
+    if(cancelEdit) cancelEdit.addEventListener('click', () => editModal.close());
+
+    if(editForm) {
+        editForm.addEventListener('submit', (e) => {
+            e.preventDefault(); // EMPÊCHER le rechargement de page
+            saveArticleChanges();
+        });
+    }
+}
+
+// Fonction globale appelée par le bouton "Modifier" dans le HTML généré
+window.openEditModal = function(globalIndex) {
+    const article = allArticles[globalIndex];
+    if (!article) return;
+
+    currentEditIndex = globalIndex;
+
+    // Remplir le formulaire
+    document.getElementById('editAnnee').value = article.Année || '';
+    document.getElementById('editNumero').value = article.Numero || '';
+    document.getElementById('editTitre').value = article.Titre || '';
+    document.getElementById('editPages').value = article['Page(s)'] || '';
+    document.getElementById('editAuteurs').value = article['Auteur(s)'] || '';
+    document.getElementById('editVilles').value = article['Ville(s)'] || '';
+    document.getElementById('editThemes').value = article['Theme(s)'] || '';
+    document.getElementById('editEpoque').value = article['Epoque'] || '';
+
+    document.getElementById('editStatus').style.display = 'none';
+    document.getElementById('editModal').showModal();
+};
+
+function saveArticleChanges() {
+    if (currentEditIndex === -1) return;
+
+    // Mise à jour de l'objet en mémoire
+    const article = allArticles[currentEditIndex];
+    
+    article.Année = document.getElementById('editAnnee').value;
+    article.Numero = document.getElementById('editNumero').value;
+    article.Titre = document.getElementById('editTitre').value;
+    article['Page(s)'] = document.getElementById('editPages').value;
+    article['Auteur(s)'] = document.getElementById('editAuteurs').value;
+    article['Ville(s)'] = document.getElementById('editVilles').value;
+    article['Theme(s)'] = document.getElementById('editThemes').value;
+    article['Epoque'] = document.getElementById('editEpoque').value;
+
+    // Feedback visuel
+    const status = document.getElementById('editStatus');
+    status.className = 'edit-status success'; // Assurez-vous d'avoir du CSS pour .success
+    status.style.background = '#d4edda';
+    status.style.color = '#155724';
+    status.textContent = '✅ Article modifié (en mémoire uniquement)';
+    status.style.display = 'block';
+
+    // Rafraichir l'interface
+    populateFilters();
+    applyFilters();
+    
+    // Fermer après délai
+    setTimeout(() => {
+        document.getElementById('editModal').close();
+    }, 1500);
 }
 
 // ============================================
 // Statistiques
 // ============================================
 
-function populateStats() {
-    const totalArticles = allArticles.length;
-    const uniqueVilles = new Set();
-    const uniqueThemes = new Set();
+function populateStatsContent() {
+    const container = document.getElementById('statsContent');
+    const total = allArticles.length;
     
-    allArticles.forEach(article => {
-        const villes = article['Ville(s)']?.split(',').map(v => v.trim()) || [];
-        const themes = article['Theme(s)']?.split(',').map(t => t.trim()) || [];
-        
-        villes.forEach(ville => { if (ville) uniqueVilles.add(ville); });
-        themes.forEach(theme => { if (theme) uniqueThemes.add(theme); });
+    // Calculs simples
+    const themes = new Set();
+    const auteurs = new Set();
+    allArticles.forEach(a => {
+        if(a['Theme(s)']) a['Theme(s)'].split(',').forEach(t => themes.add(t.trim()));
+        if(a['Auteur(s)']) a['Auteur(s)'].split(',').forEach(au => auteurs.add(au.trim()));
     });
-    
-    document.getElementById('statTotalArticles').textContent = totalArticles;
-    document.getElementById('statTotalVilles').textContent = uniqueVilles.size;
-    document.getElementById('statTotalThemes').textContent = uniqueThemes.size;
+
+    container.innerHTML = `
+        <div class="stats-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:16px; text-align:center;">
+            <div style="padding:20px; background:#f5f5f5; border-radius:8px;">
+                <h3 style="font-size:2em; margin:0; color:var(--primary);">${total}</h3>
+                <p>Articles</p>
+            </div>
+            <div style="padding:20px; background:#f5f5f5; border-radius:8px;">
+                <h3 style="font-size:2em; margin:0; color:var(--primary);">${Object.keys(VILLE_COORDINATES).length}</h3>
+                <p>Lieux cartographiés</p>
+            </div>
+            <div style="padding:20px; background:#f5f5f5; border-radius:8px;">
+                <h3 style="font-size:2em; margin:0; color:var(--primary);">${themes.size}</h3>
+                <p>Thèmes</p>
+            </div>
+            <div style="padding:20px; background:#f5f5f5; border-radius:8px;">
+                <h3 style="font-size:2em; margin:0; color:var(--primary);">${auteurs.size}</h3>
+                <p>Auteurs uniques</p>
+            </div>
+        </div>
+    `;
+}
+
+function populateStats() {
+    // Fonction simplifiée utilisée par l'init (si besoin de stats dans la sidebar)
+    // Actuellement vide car déplacée dans la modale
 }
 
 function updateStats() {
-    const totalArticles = filteredArticles.length;
-    const uniqueVilles = new Set();
-    
-    filteredArticles.forEach(article => {
-        const villes = article['Ville(s)']?.split(',').map(v => v.trim()) || [];
-        villes.forEach(ville => { if (ville) uniqueVilles.add(ville); });
-    });
-    
-    document.getElementById('statFilteredArticles').textContent = totalArticles;
-    document.getElementById('statFilteredVilles').textContent = uniqueVilles.size;
-}
-
-// ============================================
-// Gestion des événements UI
-// ============================================
-
-function initEventListeners() {
-    // Bouton sidebar
-    const sidebar = document.querySelector('.sidebar');
-    const toggleBtn = document.querySelector('.btn-toggle-sidebar');
-    
-    toggleBtn.addEventListener('click', () => {
-        sidebar.classList.toggle('active');
-        if (sidebar.classList.contains('active')) {
-            toggleBtn.style.left = 'calc(var(--sidebar-width) + 20px)';
-            toggleBtn.style.animation = 'none';
-        } else {
-            toggleBtn.style.left = '20px';
-        }
-    });
-    
-    // Bouton fermer panneau info
-    document.getElementById('closeInfo').addEventListener('click', hideInfoPanel);
-    
-    // Bouton retour map
-    document.getElementById('backToMap').addEventListener('click', () => {
-        hideInfoPanel();
-        map.setView(CONFIG.mapCenter, CONFIG.mapZoom);
-    });
-    
-    // Recherche texte
-    document.getElementById('searchInput').addEventListener('input', debounce(applyFilters, 300));
-    
-    // Mode de filtrage
-    document.querySelectorAll('input[name="filterMode"]').forEach(radio => {
-        radio.addEventListener('change', onFilterModeChange);
-    });
-    
-    // Bouton reset
-    document.getElementById('resetFiltersBtn').addEventListener('click', resetFilters);
-    
-    // Boutons sélectionner/désélectionner tous les thèmes
-    document.getElementById('checkAllThemes').addEventListener('click', () => {
-        const select = document.getElementById('themesFilters');
-        Array.from(select.options).forEach(opt => opt.selected = true);
-        applyFilters();
-    });
-    
-    document.getElementById('uncheckAllThemes').addEventListener('click', () => {
-        const select = document.getElementById('themesFilters');
-        Array.from(select.options).forEach(opt => opt.selected = false);
-        applyFilters();
-    });
-    
-    // Boutons sélectionner/désélectionner toutes les époques
-    document.getElementById('checkAllEpoques').addEventListener('click', () => {
-        const select = document.getElementById('epoquesFilters');
-        Array.from(select.options).forEach(opt => opt.selected = true);
-        applyFilters();
-    });
-    
-    document.getElementById('uncheckAllEpoques').addEventListener('click', () => {
-        const select = document.getElementById('epoquesFilters');
-        Array.from(select.options).forEach(opt => opt.selected = false);
-        applyFilters();
-    });
-    
-    // Boutons sélectionner/désélectionner toutes les villes
-    document.getElementById('checkAllVilles').addEventListener('click', () => {
-        const select = document.getElementById('villesFilters');
-        Array.from(select.options).forEach(opt => opt.selected = true);
-        applyFilters();
-    });
-    
-    document.getElementById('uncheckAllVilles').addEventListener('click', () => {
-        const select = document.getElementById('villesFilters');
-        Array.from(select.options).forEach(opt => opt.selected = false);
-        applyFilters();
-    });
-}
-
-function onFilterModeChange() {
-    const activeMode = document.querySelector('input[name="filterMode"]:checked').value;
-    
-    // Afficher/masquer les groupes de filtres
-    document.getElementById('villesFilterGroup').style.display = activeMode === 'ville' ? 'block' : 'none';
-    document.getElementById('themesFilterGroup').style.display = activeMode === 'theme' ? 'block' : 'none';
-    document.getElementById('epoquesFilterGroup').style.display = activeMode === 'epoque' ? 'block' : 'none';
-    
-    applyFilters();
+    // Optionnel : Mettre à jour des compteurs en temps réel dans la sidebar si vous en ajoutez
 }
 
 // ============================================
@@ -700,7 +709,8 @@ function onFilterModeChange() {
 
 function hideLoading() {
     const loading = document.getElementById('loading');
-    if (loading) loading.classList.add('hidden');
+    if (loading) loading.classList.add('hidden'); // Assurez-vous d'avoir .hidden { display: none; } dans le CSS
+    else document.getElementById('loading')?.remove();
 }
 
 function debounce(fn, delay) {
@@ -709,89 +719,4 @@ function debounce(fn, delay) {
         clearTimeout(timeout);
         timeout = setTimeout(() => fn(...args), delay);
     };
-}
-
-// ============================================
-// Édition (placeholder / à adapter si besoin)
-// ============================================
-
-function editArticle(articleId, indexInPanel) {
-    const articleCard = document.getElementById(articleId);
-    if (!articleCard) return;
-
-    // Récupérer l’article correspondant dans filteredArticles
-    const article = filteredArticles[indexInPanel];
-    if (!article) return;
-
-    // Préparer les champs d’édition (modale existante dans carte.html)
-    const modal = document.getElementById('editModal');
-    if (!modal) {
-        alert('Édition non disponible dans cette version de la carte.');
-        return;
-    }
-
-    document.getElementById('editTitre').value = article.Titre || '';
-    document.getElementById('editAuteurs').value = article['Auteur(s)'] || '';
-    document.getElementById('editVilles').value = article['Ville(s)'] || '';
-    document.getElementById('editThemes').value = article['Theme(s)'] || '';
-    document.getElementById('editEpoque').value = article['Epoque'] || '';
-
-    modal.showModal();
-
-    // Gestion du bouton "Enregistrer" dans la modale
-    const saveBtn = document.getElementById('editSave');
-    const cancelBtn = document.getElementById('editCancel');
-
-    const onSave = () => {
-        article.Titre = document.getElementById('editTitre').value.trim();
-        article['Auteur(s)'] = document.getElementById('editAuteurs').value.trim();
-        article['Ville(s)'] = document.getElementById('editVilles').value.trim();
-        article['Theme(s)'] = document.getElementById('editThemes').value.trim();
-        article['Epoque'] = document.getElementById('editEpoque').value.trim();
-
-        // Mettre à jour allArticles (source globale)
-        const idxGlobal = allArticles.findIndex(a =>
-            a.Titre === article.Titre &&
-            a['Auteur(s)'] === article['Auteur(s)'] &&
-            a['Ville(s)'] === article['Ville(s)']
-        );
-
-        if (idxGlobal !== -1) {
-            allArticles[idxGlobal] = { ...article };
-        }
-
-        populateFilters();
-        applyFilters();
-
-        showEditStatus('success', '✓ Article modifié avec succès !');
-
-        setTimeout(() => {
-            modal.close();
-        }, 1500);
-
-        saveBtn.removeEventListener('click', onSave);
-        cancelBtn.removeEventListener('click', onCancel);
-    };
-
-    const onCancel = () => {
-        modal.close();
-        saveBtn.removeEventListener('click', onSave);
-        cancelBtn.removeEventListener('click', onCancel);
-    };
-
-    saveBtn.addEventListener('click', onSave);
-    cancelBtn.addEventListener('click', onCancel);
-}
-
-function showEditStatus(type, message) {
-    const status = document.getElementById('editStatus');
-    status.className = `edit-status ${type}`;
-    status.textContent = message;
-    status.style.display = 'block';
-    
-    if (type === 'success') {
-        setTimeout(() => {
-            status.style.display = 'none';
-        }, 3000);
-    }
 }
