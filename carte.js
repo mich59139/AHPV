@@ -62,15 +62,20 @@ document.addEventListener('DOMContentLoaded', () => {
     initMap();
     loadData();
     initEventListeners();
-    initModalListeners(); // Nouvelle fonction pour gérer les modales proprement
+    initModalListeners(); 
     
-    // Ouvrir automatiquement le panneau de filtres
+    // Ouvrir automatiquement le panneau de filtres (ajustement de la méthode d'ouverture)
     setTimeout(() => {
-        const sidebar = document.querySelector('.sidebar');
-        const toggleBtn = document.querySelector('.btn-toggle-sidebar');
-        if(sidebar && toggleBtn) {
+        const sidebar = document.getElementById('sidebar');
+        const mapElement = document.getElementById('map');
+        if(sidebar && mapElement) {
             sidebar.classList.add('active');
-            toggleBtn.style.left = 'calc(var(--sidebar-width) + 20px)';
+            mapElement.classList.add('map-shifted'); // Appliquer le décalage à la carte
+            
+            // Forcer Leaflet à redessiner la carte après le décalage CSS
+            setTimeout(() => {
+                if (map) map.invalidateSize();
+            }, 300); // 300ms correspond à la durée de transition CSS
         }
     }, 500);
 });
@@ -86,8 +91,9 @@ function initMap() {
         zoomControl: false
     });
 
-    L.tileLayer('https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
-        attribution: '&copy; contributeurs OpenStreetMap',
+    // 🌟 CORRECTION FOND DE CARTE : Utilisation du serveur standard OSM plus fiable
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19
     }).addTo(map);
 
@@ -107,14 +113,7 @@ function initMap() {
             const btn = L.DomUtil.create('button', 'btn btn-secondary leaflet-bar-part');
             btn.innerHTML = '⌂';
             btn.title = 'Recentrer sur le Pays vizillois';
-            btn.style.cursor = 'pointer';
-            btn.style.width = '32px';
-            btn.style.height = '32px';
-            btn.style.padding = '0';
-            btn.style.lineHeight = '32px';
-            btn.style.textAlign = 'center';
-            btn.style.fontSize = '18px';
-            btn.style.borderRadius = '8px';
+            // Le style a été corrigé dans le CSS global, on simplifie ici
             
             btn.onclick = (e) => {
                 L.DomEvent.stopPropagation(e);
@@ -160,6 +159,13 @@ function initLegend() {
 // ============================================
 
 function loadData() {
+    // Utilisation de la bibliothèque Papa Parse (doit être incluse dans votre HTML)
+    if (typeof Papa === 'undefined') {
+        console.error("Papa Parse n'est pas chargé. Assurez-vous d'inclure la bibliothèque.");
+        hideLoading();
+        return;
+    }
+    
     Papa.parse(CONFIG.csvPath, {
         download: true,
         header: true,
@@ -438,8 +444,8 @@ function createMarker(ville, articles, coords) {
 
 function showInfoPanel(ville, articles) {
     const panel = document.getElementById('infoPanel');
-    const title = document.getElementById('infoPanelTitle'); // ID corrigé pour matcher le HTML
-    const content = document.getElementById('infoPanelContent'); // ID corrigé pour matcher le HTML
+    const title = document.getElementById('infoPanelTitle'); 
+    const content = document.getElementById('infoPanelContent'); 
     
     if(title) title.textContent = `${ville} — ${articles.length} article(s)`;
     if(content) content.innerHTML = generateArticlesHtml(articles);
@@ -493,17 +499,29 @@ function generateArticlesHtml(articles) {
 // ============================================
 
 function initEventListeners() {
-    // Sidebar Toggle
     const toggleBtn = document.getElementById('toggleSidebar');
     const sidebar = document.getElementById('sidebar');
-    if(toggleBtn && sidebar) {
+    const mapElement = document.getElementById('map'); // Récupération de l'élément carte
+    
+    // 🌟 CORRECTION INTERACTION CARTE/SIDEBAR
+    if(toggleBtn && sidebar && mapElement) {
         toggleBtn.addEventListener('click', () => {
             sidebar.classList.toggle('active');
-            if (sidebar.classList.contains('active')) {
-                toggleBtn.style.left = 'calc(var(--sidebar-width) + 20px)';
-            } else {
-                toggleBtn.style.left = '20px';
-            }
+            mapElement.classList.toggle('map-shifted'); // Ajout/Retrait du décalage
+
+            // S'assurer que Leaflet redessine la carte après le changement de taille
+            setTimeout(() => {
+                if (map) {
+                    map.invalidateSize();
+                }
+            }, 300); // Délai calé sur la transition CSS
+            
+            // Mise à jour de la position du bouton (utile surtout sur mobile ou si on garde le style JS)
+             if (sidebar.classList.contains('active')) {
+                 toggleBtn.style.left = 'calc(var(--sidebar-width) + 20px)';
+             } else {
+                 toggleBtn.style.left = '20px';
+             }
         });
     }
 
@@ -524,7 +542,7 @@ function initEventListeners() {
     });
 
     // Reset (Correction ID)
-    const resetBtn = document.getElementById('resetFilters'); // ID corrigé
+    const resetBtn = document.getElementById('resetFilters'); 
     if(resetBtn) resetBtn.addEventListener('click', resetFilters);
 
     // Sélection multiple helpers
@@ -640,7 +658,7 @@ function saveArticleChanges() {
 
     // Feedback visuel
     const status = document.getElementById('editStatus');
-    status.className = 'edit-status success'; // Assurez-vous d'avoir du CSS pour .success
+    status.className = 'edit-status success'; 
     status.style.background = '#d4edda';
     status.style.color = '#155724';
     status.textContent = '✅ Article modifié (en mémoire uniquement)';
@@ -675,19 +693,19 @@ function populateStatsContent() {
     container.innerHTML = `
         <div class="stats-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:16px; text-align:center;">
             <div style="padding:20px; background:#f5f5f5; border-radius:8px;">
-                <h3 style="font-size:2em; margin:0; color:var(--primary);">${total}</h3>
+                <h3 style="font-size:2em; margin:0; color:var(--accent);">${total}</h3>
                 <p>Articles</p>
             </div>
             <div style="padding:20px; background:#f5f5f5; border-radius:8px;">
-                <h3 style="font-size:2em; margin:0; color:var(--primary);">${Object.keys(VILLE_COORDINATES).length}</h3>
+                <h3 style="font-size:2em; margin:0; color:var(--accent);">${Object.keys(VILLE_COORDINATES).length}</h3>
                 <p>Lieux cartographiés</p>
             </div>
             <div style="padding:20px; background:#f5f5f5; border-radius:8px;">
-                <h3 style="font-size:2em; margin:0; color:var(--primary);">${themes.size}</h3>
+                <h3 style="font-size:2em; margin:0; color:var(--accent);">${themes.size}</h3>
                 <p>Thèmes</p>
             </div>
             <div style="padding:20px; background:#f5f5f5; border-radius:8px;">
-                <h3 style="font-size:2em; margin:0; color:var(--primary);">${auteurs.size}</h3>
+                <h3 style="font-size:2em; margin:0; color:var(--accent);">${auteurs.size}</h3>
                 <p>Auteurs uniques</p>
             </div>
         </div>
@@ -696,7 +714,6 @@ function populateStatsContent() {
 
 function populateStats() {
     // Fonction simplifiée utilisée par l'init (si besoin de stats dans la sidebar)
-    // Actuellement vide car déplacée dans la modale
 }
 
 function updateStats() {
@@ -709,7 +726,7 @@ function updateStats() {
 
 function hideLoading() {
     const loading = document.getElementById('loading');
-    if (loading) loading.classList.add('hidden'); // Assurez-vous d'avoir .hidden { display: none; } dans le CSS
+    if (loading) loading.classList.add('hidden'); 
     else document.getElementById('loading')?.remove();
 }
 
