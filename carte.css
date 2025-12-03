@@ -937,3 +937,23 @@ html, body {
     max-height: 50vh;
   }
 }
+/* ============================================ */
+/* AMÉLIORATIONS CARTOGRAPHIE (v1.9) */
+/* ============================================ */
+
+.ahpv-marker .custom-marker {
+  /* Ajoute une légère ombre portée aux marqueurs */
+  box-shadow: var(--shadow, 0 4px 8px rgba(0, 0, 0, 0.2));
+  transition: transform 0.1s;
+}
+
+.ahpv-marker .custom-marker:hover {
+  /* Fait légèrement grossir le marqueur au survol */
+  transform: translateY(-2px);
+}
+
+/* Amélioration pour la légende */
+.info.legend {
+    background: var(--panel) !important;
+    border: 1px solid var(--border) !important;
+}
