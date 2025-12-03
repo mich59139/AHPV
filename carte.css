@@ -83,7 +83,8 @@ html, body {
   background: var(--accent);
   color: #fff;
   border: none;
-  padding: 10px 16px;
+  /* CORRECTION : Ajustement du padding pour épouser la taille du texte */
+  padding: 8px 14px; 
   border-radius: 10px;
   cursor: pointer;
   font-weight: 600;
@@ -435,6 +436,7 @@ html, body {
   box-shadow: 0 6px 20px rgba(0,0,0,0.3);
 }
 
+/* Décalage du bouton lorsque la sidebar est active */
 .sidebar.active + .btn-toggle-sidebar {
   left: calc(var(--sidebar-width) + 20px);
   animation: none;
@@ -448,6 +450,13 @@ html, body {
   width: 100%;
   height: calc(100vh - var(--header-height));
   z-index: 1;
+  transition: left 0.3s ease, width 0.3s ease; /* Ajout des transitions pour le décalage */
+}
+
+/* Nouveau style pour décaler la carte lorsque la sidebar est ouverte */
+.map-shifted {
+  left: var(--sidebar-width);
+  width: calc(100% - var(--sidebar-width));
 }
 
 /* Info Panel (bottom) */
@@ -494,7 +503,8 @@ html, body {
   background: var(--accent);
   color: #fff;
   border: none;
-  padding: 8px 16px;
+  /* CORRECTION : Ajustement du padding pour épouser la taille du texte */
+  padding: 6px 12px; 
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
@@ -912,6 +922,12 @@ html, body {
     left: 10px;
   }
   
+  /* Retrait du décalage de la carte en mobile */
+  .map-shifted {
+    left: 0 !important;
+    width: 100% !important;
+  }
+
   .sidebar.active + .btn-toggle-sidebar {
     left: calc(100% - 68px);
   }
