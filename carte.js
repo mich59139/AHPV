@@ -1,6 +1,6 @@
 // ============================================
 // AHPV - Carte Interactive
-// v1.9 - Corrigé et Optimisé
+// v1.9 - Corrigé et Optimisé (Modifié)
 // ============================================
 
 // Configuration & Variables globales
@@ -42,9 +42,10 @@ const VILLE_COORDINATES = {
     'Séchilienne': [45.054, 5.835],
     'Uriage': [45.147, 5.826],
     'Varces': [45.092, 5.676],
-    'Vaulnaveys': [45.093, 5.810],
     'Vaulnaveys le bas': [45.107, 5.811],
     'Vaulnaveys le haut': [45.115, 5.825],
+    // 💡 AJOUT : Point central pour Vaulnaveys (seul)
+    'Vaulnaveys': [45.111, 5.818], 
     'Vizille': [45.073, 5.773]
 };
 
@@ -242,12 +243,14 @@ function populateVillesFilters() {
 
 function populateThemesFilters() {
     const themesCount = {};
+    
+    // 💡 MODIFICATION : Ne retient que le PREMIER thème (le thème principal)
     allArticles.forEach(article => {
-        const themes = article['Theme(s)']?.split(',').map(t => t.trim()) || [];
-        themes.forEach(theme => {
-            if (!theme || theme === '-') return;
-            themesCount[theme] = (themesCount[theme] || 0) + 1;
-        });
+        const primaryTheme = (article['Theme(s)'] || '').split(',').map(t => t.trim()).filter(Boolean)[0];
+
+        if (primaryTheme && primaryTheme !== '-') {
+            themesCount[primaryTheme] = (themesCount[primaryTheme] || 0) + 1;
+        }
     });
 
     const container = document.getElementById('themesFilters');
@@ -328,8 +331,9 @@ function applyFilters() {
         
         // Filtres conditionnels
         if (selectedThemes.length > 0) {
-            const ts = article['Theme(s)']?.split(',').map(t => t.trim()) || [];
-            if (!ts.some(t => selectedThemes.includes(t))) return false;
+            // 💡 MODIFICATION : Vérifie si le PREMIER thème (principal) correspond
+            const primaryTheme = (article['Theme(s)'] || '').split(',').map(t => t.trim()).filter(Boolean)[0];
+            if (!primaryTheme || !selectedThemes.includes(primaryTheme)) return false;
         }
         
         if (selectedEpoques.length > 0) {
@@ -415,7 +419,7 @@ function createMarker(ville, articles, coords) {
     const isPaysVizille = ['Vizille','Jarrie','Séchilienne','Saint Georges de Commiers',
     'Champ sur Drac','Notre Dame de Mésage','Saint Pierre de Mésage',
     'Vaulnaveys le bas','Vaulnaveys le haut','Uriage','Champagnier',
-    'Bresson','Herbeys','Varces','Claix','Pays vizillois'].includes(ville);
+    'Bresson','Herbeys','Varces','Claix','Pays vizillois', 'Vaulnaveys (seul)'].includes(ville); // Mise à jour de la liste
 
     const markerHtml = `
         <div class="custom-marker" style="background:${isPaysVizille ? '#6b8a21' : '#555'};">
@@ -426,11 +430,12 @@ function createMarker(ville, articles, coords) {
         </div>
     `;
 
+    // 💡 MODIFICATION : Réduction de la taille de l'icône
     const icon = L.divIcon({
         html: markerHtml,
         className: 'ahpv-marker',
-        iconSize: [90, 30],
-        iconAnchor: [45, 30]
+        iconSize: [60, 20],
+        iconAnchor: [30, 20]
     });
 
     const marker = L.marker(coords, { icon });
