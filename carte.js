@@ -1,6 +1,6 @@
 // ============================================
 // AHPV - Carte Interactive
-// v1.9 - Corrigé et Optimisé (Modifié)
+// v2.0 - Corrigé pour Mobile
 // ============================================
 
 // Configuration & Variables globales
@@ -10,7 +10,7 @@ const CONFIG = {
     csvPath: 'data/articles.csv'
 };
 
-// Coordonnées GPS (identiques à votre version)
+// Coordonnées GPS
 const VILLE_COORDINATES = {
     'Allemond (38114)': [45.132, 6.040],
     "Bourg d'Oisans": [45.056, 6.030],
@@ -44,7 +44,6 @@ const VILLE_COORDINATES = {
     'Varces': [45.092, 5.676],
     'Vaulnaveys le bas': [45.107, 5.811],
     'Vaulnaveys le haut': [45.115, 5.825],
-    // 💡 AJOUT : Point central pour Vaulnaveys (seul)
     'Vaulnaveys': [45.111, 5.818], 
     'Vizille': [45.073, 5.773]
 };
@@ -54,7 +53,7 @@ let markers = [];
 let markerClusterGroup;
 let allArticles = [];
 let filteredArticles = [];
-let currentEditIndex = -1; // Pour stocker l'index en cours d'édition
+let currentEditIndex = -1;
 
 // ============================================
 // Initialisation
@@ -66,18 +65,20 @@ document.addEventListener('DOMContentLoaded', () => {
     initEventListeners();
     initModalListeners(); 
     
-    // Ouvrir automatiquement le panneau de filtres (ajustement de la méthode d'ouverture)
+    // 🔧 CORRECTION : Ouvrir la sidebar UNIQUEMENT sur desktop
     setTimeout(() => {
         const sidebar = document.getElementById('sidebar');
         const mapElement = document.getElementById('map');
-        if(sidebar && mapElement) {
+        const isMobile = window.innerWidth <= 768;
+        
+        // Ne PAS ouvrir automatiquement sur mobile
+        if(sidebar && mapElement && !isMobile) {
             sidebar.classList.add('active');
-            mapElement.classList.add('map-shifted'); // Appliquer le décalage à la carte
+            mapElement.classList.add('map-shifted');
             
-            // Forcer Leaflet à redessiner la carte après le décalage CSS
             setTimeout(() => {
                 if (map) map.invalidateSize();
-            }, 300); // 300ms correspond à la durée de transition CSS
+            }, 300);
         }
     }, 500);
 });
@@ -87,13 +88,17 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================
 
 function initMap() {
+    const isMobile = window.innerWidth <= 768;
+    
     map = L.map('map', {
         center: CONFIG.mapCenter,
-        zoom: CONFIG.mapZoom,
-        zoomControl: false
+        zoom: isMobile ? CONFIG.mapZoom - 1 : CONFIG.mapZoom,
+        zoomControl: false,
+        tap: true,
+        touchZoom: true,
+        bounceAtZoomLimits: false
     });
 
-    // 🌟 CORRECTION FOND DE CARTE : Utilisation du serveur standard OSM plus fiable
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19
@@ -102,10 +107,10 @@ function initMap() {
     L.control.zoom({ position: 'topright' }).addTo(map);
 
     markerClusterGroup = L.markerClusterGroup({
-        disableClusteringAtZoom: 15,
+        disableClusteringAtZoom: isMobile ? 14 : 15,
         spiderfyOnMaxZoom: true,
         showCoverageOnHover: false,
-        maxClusterRadius: 50
+        maxClusterRadius: isMobile ? 60 : 50
     });
     map.addLayer(markerClusterGroup);
 
@@ -115,7 +120,6 @@ function initMap() {
             const btn = L.DomUtil.create('button', 'btn btn-secondary leaflet-bar-part');
             btn.innerHTML = '⌂';
             btn.title = 'Recentrer sur le Pays vizillois';
-            // Le style a été corrigé dans le CSS global, on simplifie ici
             
             btn.onclick = (e) => {
                 L.DomEvent.stopPropagation(e);
@@ -130,6 +134,11 @@ function initMap() {
     L.control.home({ position: 'topright' }).addTo(map);
 
     initLegend();
+    
+    // Gérer le redimensionnement (rotation écran)
+    window.addEventListener('resize', debounce(() => {
+        if (map) map.invalidateSize();
+    }, 200));
 }
 
 // ============================================
@@ -161,9 +170,8 @@ function initLegend() {
 // ============================================
 
 function loadData() {
-    // Utilisation de la bibliothèque Papa Parse (doit être incluse dans votre HTML)
     if (typeof Papa === 'undefined') {
-        console.error("Papa Parse n'est pas chargé. Assurez-vous d'inclure la bibliothèque.");
+        console.error("Papa Parse n'est pas chargé.");
         hideLoading();
         return;
     }
@@ -173,7 +181,6 @@ function loadData() {
         header: true,
         skipEmptyLines: true,
         complete: (results) => {
-            // Nettoyage initial
             allArticles = results.data.map(article => ({
                 ...article,
                 Titre: article.Titre || '',
@@ -187,7 +194,7 @@ function loadData() {
 
             filteredArticles = allArticles;
             populateFilters();
-            applyFilters(); // Ceci déclenchera processData()
+            applyFilters();
             hideLoading();
         },
         error: (error) => {
@@ -220,7 +227,7 @@ function populateVillesFilters() {
     
     const container = document.getElementById('villesFilters');
     if(!container) return;
-    container.innerHTML = ''; // Reset pour éviter doublons
+    container.innerHTML = '';
 
     const villesArray = Array.from(villesSet);
     const villesWithCount = villesArray.map(ville => {
@@ -244,7 +251,6 @@ function populateVillesFilters() {
 function populateThemesFilters() {
     const themesCount = {};
     
-    // 💡 MODIFICATION : Ne retient que le PREMIER thème (le thème principal)
     allArticles.forEach(article => {
         const primaryTheme = (article['Theme(s)'] || '').split(',').map(t => t.trim()).filter(Boolean)[0];
 
@@ -323,15 +329,12 @@ function applyFilters() {
     }
     
     filteredArticles = allArticles.filter(article => {
-        // Recherche
         if (searchTerm) {
             const searchableText = `${article.Titre} ${article['Auteur(s)']} ${article['Theme(s)']}`.toLowerCase();
             if (!searchableText.includes(searchTerm)) return false;
         }
         
-        // Filtres conditionnels
         if (selectedThemes.length > 0) {
-            // 💡 MODIFICATION : Vérifie si le PREMIER thème (principal) correspond
             const primaryTheme = (article['Theme(s)'] || '').split(',').map(t => t.trim()).filter(Boolean)[0];
             if (!primaryTheme || !selectedThemes.includes(primaryTheme)) return false;
         }
@@ -353,17 +356,14 @@ function applyFilters() {
 }
 
 function resetFilters() {
-    // Reset UI
     document.getElementById('searchInput').value = '';
     const radioNone = document.querySelector('input[name="filterMode"][value="none"]');
     if(radioNone) radioNone.checked = true;
     
-    // Cacher les blocs
     ['villesFilterGroup', 'themesFilterGroup', 'epoquesFilterGroup'].forEach(id => {
         document.getElementById(id).style.display = 'none';
     });
     
-    // Resélectionner toutes les options
     ['villesFilters', 'themesFilters', 'epoquesFilters'].forEach(id => {
         const select = document.getElementById(id);
         if(select) Array.from(select.options).forEach(opt => opt.selected = true);
@@ -419,7 +419,7 @@ function createMarker(ville, articles, coords) {
     const isPaysVizille = ['Vizille','Jarrie','Séchilienne','Saint Georges de Commiers',
     'Champ sur Drac','Notre Dame de Mésage','Saint Pierre de Mésage',
     'Vaulnaveys le bas','Vaulnaveys le haut','Uriage','Champagnier',
-    'Bresson','Herbeys','Varces','Claix','Pays vizillois', 'Vaulnaveys (seul)'].includes(ville); // Mise à jour de la liste
+    'Bresson','Herbeys','Varces','Claix','Pays vizillois', 'Vaulnaveys (seul)'].includes(ville);
 
     const markerHtml = `
         <div class="custom-marker" style="background:${isPaysVizille ? '#6b8a21' : '#555'};">
@@ -430,12 +430,16 @@ function createMarker(ville, articles, coords) {
         </div>
     `;
 
-    // 💡 MODIFICATION : Réduction de la taille de l'icône
+    // Taille adaptée pour le tactile mobile
+    const isMobile = window.innerWidth <= 768;
+    const iconSize = isMobile ? [80, 28] : [60, 20];
+    const iconAnchor = isMobile ? [40, 28] : [30, 20];
+
     const icon = L.divIcon({
         html: markerHtml,
         className: 'ahpv-marker',
-        iconSize: [60, 20],
-        iconAnchor: [30, 20]
+        iconSize: iconSize,
+        iconAnchor: iconAnchor
     });
 
     const marker = L.marker(coords, { icon });
@@ -468,7 +472,6 @@ function generateArticlesHtml(articles) {
     const maxDisplay = 30;
     
     articles.slice(0, maxDisplay).forEach((article, index) => {
-        // On cherche l'index global pour l'édition plus tard
         const globalIndex = allArticles.indexOf(article);
         const articleId = `article-card-${index}`;
         
@@ -507,27 +510,66 @@ function generateArticlesHtml(articles) {
 function initEventListeners() {
     const toggleBtn = document.getElementById('toggleSidebar');
     const sidebar = document.getElementById('sidebar');
-    const mapElement = document.getElementById('map'); // Récupération de l'élément carte
+    const mapElement = document.getElementById('map');
+    const closeSidebarBtn = document.getElementById('closeSidebar');
     
-    // 🌟 CORRECTION INTERACTION CARTE/SIDEBAR
+    // 🔧 Fonction pour fermer la sidebar
+    function closeSidebar() {
+        sidebar.classList.remove('active');
+        mapElement.classList.remove('map-shifted');
+        if (toggleBtn) {
+            toggleBtn.style.left = window.innerWidth <= 768 ? '12px' : '20px';
+        }
+        setTimeout(() => {
+            if (map) map.invalidateSize();
+        }, 300);
+    }
+    
+    // 🔧 Fonction pour ouvrir la sidebar
+    function openSidebar() {
+        sidebar.classList.add('active');
+        // Ne pas décaler la carte sur mobile
+        if (window.innerWidth > 768) {
+            mapElement.classList.add('map-shifted');
+        }
+        setTimeout(() => {
+            if (map) map.invalidateSize();
+        }, 300);
+    }
+    
+    // Toggle sidebar avec le bouton hamburger
     if(toggleBtn && sidebar && mapElement) {
         toggleBtn.addEventListener('click', () => {
-            sidebar.classList.toggle('active');
-            mapElement.classList.toggle('map-shifted'); // Ajout/Retrait du décalage
-
-            // S'assurer que Leaflet redessine la carte après le changement de taille
-            setTimeout(() => {
-                if (map) {
-                    map.invalidateSize();
-                }
-            }, 300); // Délai calé sur la transition CSS
+            if (sidebar.classList.contains('active')) {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
             
-            // Mise à jour de la position du bouton (utile surtout sur mobile ou si on garde le style JS)
-             if (sidebar.classList.contains('active')) {
-                 toggleBtn.style.left = 'calc(var(--sidebar-width) + 20px)';
-             } else {
-                 toggleBtn.style.left = '20px';
-             }
+            // Mise à jour position du bouton
+            if (window.innerWidth <= 768) {
+                toggleBtn.style.left = sidebar.classList.contains('active') ? 'calc(85% - 60px)' : '12px';
+            } else {
+                toggleBtn.style.left = sidebar.classList.contains('active') ? 'calc(var(--sidebar-width) + 20px)' : '20px';
+            }
+        });
+    }
+    
+    // 🔧 CORRECTION : Bouton × dans la sidebar
+    if(closeSidebarBtn) {
+        closeSidebarBtn.addEventListener('click', closeSidebar);
+    }
+    
+    // Fermer la sidebar en cliquant sur la carte (mobile)
+    if(mapElement) {
+        mapElement.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768 && sidebar.classList.contains('active')) {
+                if (!e.target.closest('.leaflet-marker-icon') && 
+                    !e.target.closest('.leaflet-popup') &&
+                    !e.target.closest('.custom-marker')) {
+                    closeSidebar();
+                }
+            }
         });
     }
 
@@ -542,12 +584,12 @@ function initEventListeners() {
     const searchInput = document.getElementById('searchInput');
     if(searchInput) searchInput.addEventListener('input', debounce(applyFilters, 300));
 
-    // Modes
+    // Modes de filtrage
     document.querySelectorAll('input[name="filterMode"]').forEach(radio => {
         radio.addEventListener('change', onFilterModeChange);
     });
 
-    // Reset (Correction ID)
+    // Reset
     const resetBtn = document.getElementById('resetFilters'); 
     if(resetBtn) resetBtn.addEventListener('click', resetFilters);
 
@@ -604,12 +646,12 @@ function initModalListeners() {
     const closeStats = document.getElementById('closeStats');
 
     if(btnStats) btnStats.addEventListener('click', () => {
-        populateStatsContent(); // Générer le HTML des stats
+        populateStatsContent();
         statsModal.showModal();
     });
     if(closeStats) closeStats.addEventListener('click', () => statsModal.close());
 
-    // Édition (Setup du formulaire une seule fois)
+    // Édition
     const editModal = document.getElementById('editModal');
     const closeEdit = document.getElementById('closeEditModal');
     const cancelEdit = document.getElementById('cancelEdit');
@@ -620,20 +662,18 @@ function initModalListeners() {
 
     if(editForm) {
         editForm.addEventListener('submit', (e) => {
-            e.preventDefault(); // EMPÊCHER le rechargement de page
+            e.preventDefault();
             saveArticleChanges();
         });
     }
 }
 
-// Fonction globale appelée par le bouton "Modifier" dans le HTML généré
 window.openEditModal = function(globalIndex) {
     const article = allArticles[globalIndex];
     if (!article) return;
 
     currentEditIndex = globalIndex;
 
-    // Remplir le formulaire
     document.getElementById('editAnnee').value = article.Année || '';
     document.getElementById('editNumero').value = article.Numero || '';
     document.getElementById('editTitre').value = article.Titre || '';
@@ -650,7 +690,6 @@ window.openEditModal = function(globalIndex) {
 function saveArticleChanges() {
     if (currentEditIndex === -1) return;
 
-    // Mise à jour de l'objet en mémoire
     const article = allArticles[currentEditIndex];
     
     article.Année = document.getElementById('editAnnee').value;
@@ -662,7 +701,6 @@ function saveArticleChanges() {
     article['Theme(s)'] = document.getElementById('editThemes').value;
     article['Epoque'] = document.getElementById('editEpoque').value;
 
-    // Feedback visuel
     const status = document.getElementById('editStatus');
     status.className = 'edit-status success'; 
     status.style.background = '#d4edda';
@@ -670,11 +708,9 @@ function saveArticleChanges() {
     status.textContent = '✅ Article modifié (en mémoire uniquement)';
     status.style.display = 'block';
 
-    // Rafraichir l'interface
     populateFilters();
     applyFilters();
     
-    // Fermer après délai
     setTimeout(() => {
         document.getElementById('editModal').close();
     }, 1500);
@@ -688,7 +724,6 @@ function populateStatsContent() {
     const container = document.getElementById('statsContent');
     const total = allArticles.length;
     
-    // Calculs simples
     const themes = new Set();
     const auteurs = new Set();
     allArticles.forEach(a => {
@@ -718,13 +753,9 @@ function populateStatsContent() {
     `;
 }
 
-function populateStats() {
-    // Fonction simplifiée utilisée par l'init (si besoin de stats dans la sidebar)
-}
+function populateStats() {}
 
-function updateStats() {
-    // Optionnel : Mettre à jour des compteurs en temps réel dans la sidebar si vous en ajoutez
-}
+function updateStats() {}
 
 // ============================================
 // Utilitaires
