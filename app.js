@@ -1,8 +1,9 @@
 // AHPV — Catalogue des articles
-// Version simplifiée et cohérente pour index.html v1.16
+// Version simplifiée et cohérente pour index.html v1.17
 // Chargement CSV, filtres, tri, pagination, édition inline,
 // ajout d'article, listes (auteurs/villes/thèmes/époques),
 // sauvegarde sur GitHub via token personnel.
+// v1.17 : Ajout du filtre par thème
 
 // -----------------------------
 // Configuration
@@ -28,6 +29,7 @@ let LISTS = { auteurs: [], villes: [], themes: [], epoques: [] };
 let FILTER_YEAR   = "";
 let FILTER_NUMERO = "";
 let FILTER_EPOQUE = "";
+let FILTER_THEME  = "";
 let QUERY         = "";
 
 let sortCol = null;
@@ -376,6 +378,12 @@ function applyFilters() {
   if (FILTER_EPOQUE) {
     rows = rows.filter(r => (r["Epoque"] || "") === FILTER_EPOQUE);
   }
+  if (FILTER_THEME) {
+    rows = rows.filter(r => {
+      const themes = (r["Theme(s)"] || "").split(/[,;]/).map(t => t.trim().toLowerCase());
+      return themes.some(t => t.includes(FILTER_THEME.toLowerCase()));
+    });
+  }
   if (QUERY) {
     const q = QUERY.toLowerCase();
     rows = rows.filter(r =>
@@ -522,6 +530,7 @@ function bindFilters() {
   const fy = document.getElementById("filter-annee");
   const fn = document.getElementById("filter-numero");
   const fe = document.getElementById("filter-epoque");
+  const ft = document.getElementById("filter-theme");
   const q  = document.getElementById("search");
 
   if (fy) {
@@ -546,6 +555,13 @@ function bindFilters() {
       render();
     });
   }
+  if (ft) {
+    ft.addEventListener("change", () => {
+      FILTER_THEME = ft.value;
+      currentPage = 1;
+      render();
+    });
+  }
   if (q) {
     const updateQ = debounce(() => {
       QUERY = q.value.trim();
@@ -561,10 +577,12 @@ function bindFilters() {
       FILTER_YEAR = "";
       FILTER_NUMERO = "";
       FILTER_EPOQUE = "";
+      FILTER_THEME = "";
       QUERY = "";
       if (fy) fy.value = "";
       if (fn) fn.value = "";
       if (fe) fe.value = "";
+      if (ft) ft.value = "";
       if (q)  q.value  = "";
       currentPage = 1;
       refreshNumeroOptions();
@@ -714,6 +732,38 @@ function refreshEpoqueOptions() {
     uniqSorted(src).map(e => `<option value="${e}">${e}</option>`).join("");
 
   fe.innerHTML = options;
+}
+
+function refreshThemeOptions() {
+  const ft = document.getElementById("filter-theme");
+  if (!ft) return;
+
+  // Collecter tous les thèmes uniques depuis les articles
+  const themesSet = new Set();
+  ARTICLES.forEach(r => {
+    const themes = (r["Theme(s)"] || "").split(/[,;]/).map(t => t.trim()).filter(Boolean);
+    themes.forEach(t => {
+      if (t && t !== "-") themesSet.add(t);
+    });
+  });
+
+  // Utiliser la liste LISTS.themes si disponible, sinon les thèmes des articles
+  let src = [];
+  if (LISTS.themes && LISTS.themes.length) {
+    src = LISTS.themes;
+  } else {
+    src = Array.from(themesSet);
+  }
+
+  const cur = ft.value;
+  const options =
+    '<option value="">(tous)</option>' +
+    uniqSorted(src).map(t => `<option value="${t}">${t}</option>`).join("");
+
+  ft.innerHTML = options;
+
+  if (src.includes(cur)) ft.value = cur;
+  else ft.value = "";
 }
 
 // -----------------------------
@@ -1325,6 +1375,7 @@ async function init() {
     refreshYearOptions();
     refreshNumeroOptions();
     refreshEpoqueOptions();
+    refreshThemeOptions();
     refreshDatalists();
 
     bindFilters();
