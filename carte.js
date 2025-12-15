@@ -1,6 +1,6 @@
 // ============================================
 // AHPV - Carte Interactive
-// v2.0 - Corrigé pour Mobile
+// v2.1 - 69 lieux cartographiés
 // ============================================
 
 // Configuration & Variables globales
@@ -10,43 +10,113 @@ const CONFIG = {
     csvPath: 'data/articles.csv'
 };
 
-// Coordonnées GPS
+// Coordonnées GPS - v2.1 avec 69 lieux
 const VILLE_COORDINATES = {
     'Allemond (38114)': [45.132, 6.040],
+    'Belledonne': [45.200, 5.980],
+    "Bessey d'Oz": [45.098, 6.050],
     "Bourg d'Oisans": [45.056, 6.030],
+    'Brandes en Oisans': [45.103, 6.082],
     'Bresson': [45.139, 5.740],
+    'Brié': [45.125, 5.793],
+    'Brié et Angonnes': [45.125, 5.793],
+    'Canton (38220)': [45.073, 5.773],
     'Champ sur Drac': [45.080, 5.733],
     'Champagnier': [45.112, 5.721],
+    'Chamrousse': [45.117, 5.878],
+    'Cholonge': [44.979, 5.741],
     'Claix': [45.123, 5.673],
+    'Clelles': [44.822, 5.631],
+    'Comboire (Échirolles)': [45.135, 5.714],
+    'Crots': [44.545, 6.447],
     'Dauphiné': [45.200, 5.700],
     'Eybens': [45.147, 5.753],
     'Fontaine': [45.192, 5.689],
     'France': [46.603, 2.440],
+    'france': [46.603, 2.440],
     'Gavet': [45.055, 5.870],
     'Grenoble': [45.188, 5.727],
+    'Haute-Jarrie': [45.092, 5.763],
     'Herbeys': [45.137, 5.798],
     'Isère': [45.200, 5.700],
     'Jarrie': [45.115, 5.758],
+    "L'Alpe d'Huez": [45.092, 6.072],
     "L'Oisans": [45.100, 6.000],
     'La Morte': [45.027, 5.862],
+    'La Paute': [45.080, 5.897],
     'Laffrey': [45.008, 5.767],
     'Livet': [45.093, 5.915],
+    'Livet et Gavet': [45.093, 5.915],
+    'Lyon': [45.764, 4.835],
+    'Massif de Belledonne': [45.200, 5.980],
+    'Matheysine': [44.967, 5.783],
     'Monestier de Clermont': [44.919, 5.635],
+    'Mont Aiguille': [44.844, 5.554],
+    'Montchaboud': [45.125, 5.770],
+    'Montchaffrey': [45.110, 5.829],
+    'Montjean': [45.046, 5.718],
     'Notre Dame de Mésage': [45.074, 5.749],
+    'Oisans ou Vizille': [45.073, 5.773],
+    'Pays Vizillois': [45.073, 5.773],
     'Pays vizillois': [45.073, 5.773],
+    'Pellafol': [44.778, 5.893],
+    'Petichet': [44.991, 5.765],
     'Rioupéroux': [45.092, 5.903],
+    'Saint Barthélémy de Séchilienne': [45.031, 5.823],
     'Saint Georges de Commiers': [45.046, 5.704],
+    'Saint Jean de Vaux': [45.052, 5.768],
     'Saint Martin de la Cluze': [45.031, 5.697],
+    'Saint Paul de Varces': [45.069, 5.663],
     'Saint Pierre de Mésage': [45.070, 5.760],
+    'Saint-Maurice-en-Trièves': [44.859, 5.681],
     'Sassenage': [45.212, 5.661],
     'Séchilienne': [45.054, 5.835],
+    'Tavernolles': [45.042, 5.695],
     'Uriage': [45.147, 5.826],
     'Varces': [45.092, 5.676],
+    'Vaulnaveys': [45.111, 5.818],
     'Vaulnaveys le bas': [45.107, 5.811],
     'Vaulnaveys le haut': [45.115, 5.825],
-    'Vaulnaveys': [45.111, 5.818], 
-    'Vizille': [45.073, 5.773]
+    'Verdun': [49.160, 5.387],
+    "Villeneuve d'Uriage": [45.137, 5.842],
+    'Vizille': [45.073, 5.773],
+    'vizille': [45.073, 5.773]
 };
+
+// Normaliser les noms de villes (apostrophes, espaces)
+function normalizeVilleName(name) {
+    if (!name) return '';
+    return name.trim()
+        .replace(/'/g, "'")  // apostrophe courbe → droite
+        .replace(/'/g, "'")  // autre apostrophe → droite
+        .replace(/\s+/g, ' '); // espaces multiples
+}
+
+// Chercher les coordonnées avec normalisation
+function getVilleCoordinates(ville) {
+    if (!ville) return null;
+    
+    // Essai direct
+    if (VILLE_COORDINATES[ville]) return VILLE_COORDINATES[ville];
+    
+    // Essai normalisé
+    const normalized = normalizeVilleName(ville);
+    for (const [key, coords] of Object.entries(VILLE_COORDINATES)) {
+        if (normalizeVilleName(key) === normalized) {
+            return coords;
+        }
+    }
+    
+    // Essai insensible à la casse
+    const lowerVille = normalized.toLowerCase();
+    for (const [key, coords] of Object.entries(VILLE_COORDINATES)) {
+        if (normalizeVilleName(key).toLowerCase() === lowerVille) {
+            return coords;
+        }
+    }
+    
+    return null;
+}
 
 let map;
 let markers = [];
@@ -401,7 +471,8 @@ function processData() {
         }
 
         villesForMarkers.forEach(ville => {
-            if (!ville || ville === '-' || !VILLE_COORDINATES[ville]) return;
+            const coords = getVilleCoordinates(ville);
+            if (!ville || ville === '-' || !coords) return;
             if (!articlesByVille[ville]) articlesByVille[ville] = [];
             articlesByVille[ville].push(article);
         });
@@ -411,7 +482,8 @@ function processData() {
     markers = [];
 
     for (const [ville, articles] of Object.entries(articlesByVille)) {
-        createMarker(ville, articles, VILLE_COORDINATES[ville]);
+        const coords = getVilleCoordinates(ville);
+        if (coords) createMarker(ville, articles, coords);
     }
 }
 

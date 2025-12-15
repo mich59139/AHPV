@@ -600,6 +600,10 @@ function bindSorting() {
     th.addEventListener("click", () => {
       const col = th.dataset.col;
       console.log("🔄 Tri demandé sur colonne:", col);
+      
+      // DEBUG: alerte temporaire
+      // alert("Tri sur: " + col);
+      
       if (sortCol === col) {
         sortDir = sortDir === "asc" ? "desc" : "asc";
       } else {
@@ -607,6 +611,10 @@ function bindSorting() {
         sortDir = "asc";
       }
       console.log("📊 sortCol =", sortCol, "| sortDir =", sortDir);
+      
+      // DEBUG: afficher dans le titre de la page
+      document.title = "Tri: " + sortCol + " " + sortDir;
+      
       currentPage = 1;
       render();
     });
@@ -744,7 +752,7 @@ function refreshThemeOptions() {
   const ft = document.getElementById("filter-theme");
   if (!ft) return;
 
-  // Collecter tous les thèmes uniques depuis les articles
+  // Collecter tous les thèmes uniques DIRECTEMENT depuis les articles
   const themesSet = new Set();
   ARTICLES.forEach(r => {
     const themes = (r["Theme(s)"] || "").split(/[,;]/).map(t => t.trim()).filter(Boolean);
@@ -753,18 +761,15 @@ function refreshThemeOptions() {
     });
   });
 
-  // Utiliser la liste LISTS.themes si disponible, sinon les thèmes des articles
-  let src = [];
-  if (LISTS.themes && LISTS.themes.length) {
-    src = LISTS.themes;
-  } else {
-    src = Array.from(themesSet);
-  }
+  // Trier les thèmes
+  const src = Array.from(themesSet).sort((a, b) => 
+    a.localeCompare(b, "fr", { sensitivity: "base" })
+  );
 
   const cur = ft.value;
   const options =
     '<option value="">(tous)</option>' +
-    uniqSorted(src).map(t => `<option value="${t}">${t}</option>`).join("");
+    src.map(t => `<option value="${t}">${t}</option>`).join("");
 
   ft.innerHTML = options;
 
