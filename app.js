@@ -395,6 +395,9 @@ function applyFilters() {
 
   if (sortCol) {
     const factor = sortDir === "asc" ? 1 : -1;
+    console.log("🔀 Tri en cours sur:", sortCol, "direction:", sortDir);
+    console.log("   Exemple valeur 1:", rows[0]?.[sortCol]);
+    console.log("   Exemple valeur 2:", rows[1]?.[sortCol]);
     rows.sort((a, b) =>
       (a[sortCol] || "").toString().localeCompare(
         (b[sortCol] || "").toString(),
@@ -402,6 +405,7 @@ function applyFilters() {
         { numeric: true, sensitivity: "base" }
       ) * factor
     );
+    console.log("   Après tri, 1er:", rows[0]?.[sortCol]);
   }
   return rows;
 }
@@ -595,12 +599,14 @@ function bindSorting() {
   document.querySelectorAll("th[data-col]").forEach(th => {
     th.addEventListener("click", () => {
       const col = th.dataset.col;
+      console.log("🔄 Tri demandé sur colonne:", col);
       if (sortCol === col) {
         sortDir = sortDir === "asc" ? "desc" : "asc";
       } else {
         sortCol = col;
         sortDir = "asc";
       }
+      console.log("📊 sortCol =", sortCol, "| sortDir =", sortDir);
       currentPage = 1;
       render();
     });
