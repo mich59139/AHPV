@@ -376,7 +376,7 @@ function applyFilters() {
     );
   }
   if (FILTER_EPOQUE) {
-    rows = rows.filter(r => (r["Epoque"] || "") === FILTER_EPOQUE);
+    rows = rows.filter(r => (r["Epoque"] || "").trim() === FILTER_EPOQUE.trim());
   }
   if (FILTER_THEME) {
     rows = rows.filter(r => {
