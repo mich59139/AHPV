@@ -1396,7 +1396,7 @@ function extractNumero(numeroStr) {
 function getImageForNumero(numeroStr) {
   const num = extractNumero(numeroStr);
   if (num === null || num < 1 || num > 69) return null;
-  return `images/memoire-${num}.jpg`;
+  return `Images/memoire-${num}.jpg`;
 }
 
 // Normaliser le numéro pour le groupement (ex: "Mémoire n°06" et "Mémoire N°6" → "6")
