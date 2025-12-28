@@ -1373,6 +1373,266 @@ function showLoading(show) {
 }
 
 // -----------------------------
+// VUE CARTES - Affichage par numéro de revue
+// -----------------------------
+
+let currentView = 'list'; // 'list' ou 'cards'
+
+// Extraire le numéro depuis "Mémoire n°XX" ou "XX"
+function extractNumero(numeroStr) {
+  if (!numeroStr) return null;
+  // Chercher le pattern "n°XX" ou juste un nombre
+  const match = String(numeroStr).match(/n°\s*(\d+)/i);
+  if (match) {
+    return parseInt(match[1], 10);
+  }
+  // Sinon essayer de parser directement
+  const num = parseInt(numeroStr, 10);
+  return isNaN(num) ? null : num;
+}
+
+// Mapping des images vers les numéros de revue
+// memoire-1.jpg à memoire-69.jpg (affiche si le fichier existe)
+function getImageForNumero(numeroStr) {
+  const num = extractNumero(numeroStr);
+  if (num === null || num < 1 || num > 69) return null;
+  return `images/memoire-${num}.jpg`;
+}
+
+// Normaliser le numéro pour le groupement (ex: "Mémoire n°06" et "Mémoire N°6" → "6")
+// Mais garder "bis" séparé
+function normalizeNumero(numeroStr) {
+  if (!numeroStr) return null;
+  const str = String(numeroStr).toLowerCase();
+  // Vérifier si c'est un numéro bis
+  if (str.includes('bis')) {
+    const match = str.match(/n°\s*(\d+)/i);
+    return match ? match[1].replace(/^0+/, '') + 'bis' : null;
+  }
+  // Extraire juste le numéro
+  const match = str.match(/n°\s*(\d+)/i);
+  if (match) {
+    return match[1].replace(/^0+/, ''); // Enlever les zéros initiaux
+  }
+  return null;
+}
+
+// Grouper les articles par numéro de revue (normalisé)
+function groupArticlesByNumero(articles) {
+  const groups = {};
+
+  articles.forEach(article => {
+    const numeroRaw = article['Numéro'] || article['Numero'] || '';
+    if (!numeroRaw) return;
+
+    const numeroKey = normalizeNumero(numeroRaw);
+    if (!numeroKey) return;
+
+    if (!groups[numeroKey]) {
+      groups[numeroKey] = {
+        numero: numeroRaw, // Garder le format original pour l'affichage
+        annee: article['Année'] || '',
+        articles: []
+      };
+    }
+    groups[numeroKey].articles.push(article);
+    // Garder l'année la plus récente
+    if (article['Année'] && (!groups[numeroKey].annee || article['Année'] > groups[numeroKey].annee)) {
+      groups[numeroKey].annee = article['Année'];
+    }
+  });
+
+  return groups;
+}
+
+// Générer une carte pour un numéro de revue
+function createRevueCard(revueData) {
+  const { numero, annee, articles } = revueData;
+  const imagePath = getImageForNumero(numero);
+  const articleCount = articles.length;
+  const displayNumero = extractNumero(numero) || numero; // Numéro court pour l'affichage
+
+  // Trier les articles par page
+  const sortedArticles = [...articles].sort((a, b) => {
+    const pageA = parseInt(a['Page(s)'] || '0', 10);
+    const pageB = parseInt(b['Page(s)'] || '0', 10);
+    return pageA - pageB;
+  });
+
+  // Aperçu des 4 premiers titres
+  const previewArticles = sortedArticles.slice(0, 4);
+  const moreCount = articleCount - previewArticles.length;
+
+  const card = document.createElement('div');
+  card.className = 'revue-card';
+  card.setAttribute('data-numero', numero);
+
+  // Couverture
+  let coverHtml = '';
+  if (imagePath) {
+    coverHtml = `
+      <div class="revue-cover">
+        <img src="${imagePath}" alt="Couverture Mémoire n°${displayNumero}" loading="lazy" onerror="this.parentElement.innerHTML = createPlaceholderHtml('${displayNumero}', '${annee}')">
+        <span class="revue-badge">${articleCount} article${articleCount > 1 ? 's' : ''}</span>
+      </div>
+    `;
+  } else {
+    coverHtml = `
+      <div class="revue-cover">
+        <div class="revue-cover-placeholder">
+          <div class="revue-title">Mémoire</div>
+          <div class="revue-subtitle">Revue AHPV</div>
+          <div class="revue-numero-big">${displayNumero}</div>
+          <div class="revue-annee">${annee || ''}</div>
+        </div>
+        <span class="revue-badge">${articleCount} article${articleCount > 1 ? 's' : ''}</span>
+      </div>
+    `;
+  }
+
+  // Informations
+  const infoHtml = `
+    <div class="revue-info">
+      <h3>Mémoire n°${displayNumero}</h3>
+      <div class="revue-meta">
+        <span>📅 ${annee || 'N/A'}</span>
+        <span>📄 ${articleCount} article${articleCount > 1 ? 's' : ''}</span>
+      </div>
+    </div>
+  `;
+
+  // Aperçu des articles
+  let previewHtml = '';
+  if (previewArticles.length > 0) {
+    const articlesLi = previewArticles.map(a =>
+      `<li title="${(a.Titre || '').replace(/"/g, '&quot;')}">${a.Titre || 'Sans titre'}</li>`
+    ).join('');
+
+    previewHtml = `
+      <div class="revue-articles-preview">
+        <h4>Articles</h4>
+        <ul>${articlesLi}</ul>
+        ${moreCount > 0 ? `<p class="more-articles">+ ${moreCount} autre${moreCount > 1 ? 's' : ''} article${moreCount > 1 ? 's' : ''}...</p>` : ''}
+      </div>
+    `;
+  }
+
+  card.innerHTML = coverHtml + infoHtml + previewHtml;
+
+  // Clic pour filtrer par ce numéro
+  card.addEventListener('click', () => {
+    // Basculer en vue liste et filtrer par ce numéro
+    switchToListView();
+    document.getElementById('filter-numero').value = numero;
+    FILTER_NUMERO = numero;
+    currentPage = 1;
+    render();
+  });
+
+  return card;
+}
+
+// Fonction helper pour le placeholder (utilisé en fallback onerror)
+window.createPlaceholderHtml = function(numero, annee) {
+  return `
+    <div class="revue-cover-placeholder">
+      <div class="revue-title">Mémoire</div>
+      <div class="revue-subtitle">Revue AHPV</div>
+      <div class="revue-numero-big">${numero}</div>
+      <div class="revue-annee">${annee || ''}</div>
+    </div>
+  `;
+};
+
+// Rendu de la vue cartes
+function renderCardsView() {
+  const container = document.getElementById('cards-container');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  // Grouper par numéro
+  const groups = groupArticlesByNumero(ARTICLES);
+
+  // Trier par numéro décroissant (plus récent en premier)
+  // Les numéros "bis" viennent juste après leur numéro principal
+  const sortedNumeros = Object.keys(groups).sort((a, b) => {
+    const numA = parseInt(a.replace('bis', ''), 10) || 0;
+    const numB = parseInt(b.replace('bis', ''), 10) || 0;
+    if (numA !== numB) return numB - numA;
+    // Si même numéro, "bis" vient après
+    if (a.includes('bis') && !b.includes('bis')) return 1;
+    if (!a.includes('bis') && b.includes('bis')) return -1;
+    return 0;
+  });
+
+  // Créer les cartes
+  sortedNumeros.forEach(numero => {
+    const card = createRevueCard(groups[numero]);
+    container.appendChild(card);
+  });
+
+  // Message si aucun résultat
+  if (sortedNumeros.length === 0) {
+    container.innerHTML = '<p class="muted" style="text-align:center; padding: 40px;">Aucun numéro de revue trouvé.</p>';
+  }
+}
+
+// Basculer entre les vues
+function switchToListView() {
+  currentView = 'list';
+  document.getElementById('list-view')?.classList.remove('hidden');
+  document.getElementById('cards-view')?.classList.add('hidden');
+  document.getElementById('view-list')?.classList.add('active');
+  document.getElementById('view-cards')?.classList.remove('active');
+
+  // Remettre le pager visible
+  const pager = document.querySelector('.pager');
+  if (pager) pager.style.display = '';
+}
+
+function switchToCardsView() {
+  currentView = 'cards';
+
+  const listView = document.getElementById('list-view');
+  const cardsView = document.getElementById('cards-view');
+  const listBtn = document.getElementById('view-list');
+  const cardsBtn = document.getElementById('view-cards');
+
+  // Cacher la liste, montrer les cartes
+  if (listView) listView.classList.add('hidden');
+  if (cardsView) cardsView.classList.remove('hidden');
+  if (listBtn) listBtn.classList.remove('active');
+  if (cardsBtn) cardsBtn.classList.add('active');
+
+  // Aussi cacher le pager (il est dans list-view mais après)
+  const pager = document.querySelector('.pager');
+  if (pager) pager.style.display = 'none';
+
+  renderCardsView();
+}
+
+function bindViewToggle() {
+  const listBtn = document.getElementById('view-list');
+  const cardsBtn = document.getElementById('view-cards');
+
+  if (!listBtn || !cardsBtn) {
+    console.error('❌ Boutons vue non trouvés');
+    return;
+  }
+
+  listBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    switchToListView();
+  });
+
+  cardsBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    switchToCardsView();
+  });
+}
+
+// -----------------------------
 // Initialisation
 // -----------------------------
 
@@ -1397,8 +1657,12 @@ async function init() {
     bindAuth();
     bindAddModal();
     bindListsEditor();
+    bindViewToggle();
 
     render();
+
+    // Afficher la vue Cartes par défaut
+    switchToCardsView();
 
     console.log("✅ Application initialisée avec succès");
   } catch (err) {

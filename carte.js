@@ -222,11 +222,11 @@ function initLegend() {
         div.innerHTML = `
             <div style="font-weight:bold; margin-bottom:6px;">Légende</div>
             <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
-                <span style="width:16px; height:16px; border-radius:50%; background:#6b8a21; display:inline-block;"></span>
+                <span style="width:16px; height:16px; border-radius:50%; background:#1e3a5f; display:inline-block;"></span>
                 <span>Pays vizillois</span>
             </div>
             <div style="display:flex; align-items:center; gap:6px;">
-                <span style="width:16px; height:16px; border-radius:50%; background:#555; display:inline-block;"></span>
+                <span style="width:16px; height:16px; border-radius:50%; background:#6b5c4a; display:inline-block;"></span>
                 <span>Autre localisation</span>
             </div>
         `;
@@ -494,7 +494,7 @@ function createMarker(ville, articles, coords) {
     'Bresson','Herbeys','Varces','Claix','Pays vizillois', 'Vaulnaveys (seul)'].includes(ville);
 
     const markerHtml = `
-        <div class="custom-marker" style="background:${isPaysVizille ? '#6b8a21' : '#555'};">
+        <div class="custom-marker" style="background:${isPaysVizille ? '#1e3a5f' : '#6b5c4a'};">
             <div class="marker-content">
                 <span class="marker-ville">${ville}</span>
                 <span class="marker-count">${articles.length}</span>
@@ -502,16 +502,12 @@ function createMarker(ville, articles, coords) {
         </div>
     `;
 
-    // Taille adaptée pour le tactile mobile
-    const isMobile = window.innerWidth <= 768;
-    const iconSize = isMobile ? [80, 28] : [60, 20];
-    const iconAnchor = isMobile ? [40, 28] : [30, 20];
-
+    // Taille automatique pour s'adapter au contenu
     const icon = L.divIcon({
         html: markerHtml,
         className: 'ahpv-marker',
-        iconSize: iconSize,
-        iconAnchor: iconAnchor
+        iconSize: null,  // Taille automatique
+        iconAnchor: [0, 0]  // Sera ajusté par CSS
     });
 
     const marker = L.marker(coords, { icon });

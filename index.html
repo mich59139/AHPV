@@ -27,8 +27,8 @@
   
   <!-- Ressources -->
   <link rel="icon" href="assets/favicon.png" />
-  <link rel="stylesheet" href="style.css" />
-  <script src="app.js" defer></script>
+  <link rel="stylesheet" href="style.css?v=3.0" />
+  <script src="app.js?v=3.0" defer></script>
 </head>
 <body>
 
@@ -86,14 +86,23 @@
             >
               ❓ Aide
             </button>
-            <a 
-              href="carte.html" 
-              class="btn primary" 
+            <a
+              href="carte.html"
+              class="btn primary"
               title="Voir la carte interactive"
               aria-label="Voir la carte interactive"
               style="text-decoration: none;"
             >
               🗺️ Carte
+            </a>
+            <a
+              href="https://mich59139.github.io/bibliotheque-ahpv-/"
+              class="btn ghost"
+              title="Accéder à la bibliothèque des Amis de l'Histoire"
+              aria-label="Accéder à la bibliothèque des Amis de l'Histoire"
+              style="text-decoration: none;"
+            >
+              📚 Bibliothèque AHPV
             </a>
           </div>
         </div>
@@ -235,8 +244,25 @@
       </div>
     </section>
 
+    <!-- Toggle Vue Liste/Cartes -->
+    <div class="view-toggle" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+      <span style="font-size: 12px; color: var(--muted); font-weight: 500;">Affichage :</span>
+      <button id="view-list" class="btn-view active" title="Vue liste">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+        Liste
+      </button>
+      <button id="view-cards" class="btn-view" title="Vue cartes avec couvertures">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+        </svg>
+        Cartes
+      </button>
+    </div>
+
     <!-- Tableau -->
-    <section class="panel" aria-label="Liste des articles">
+    <section class="panel" id="list-view" aria-label="Liste des articles">
       <div class="table-wrap" role="region" aria-label="Tableau des articles" tabindex="0">
         <table class="table">
           <thead>
@@ -375,6 +401,13 @@
           ⏭
         </button>
       </nav>
+    </section>
+
+    <!-- Vue Cartes (par numéro de revue) -->
+    <section class="panel hidden" id="cards-view" aria-label="Vue cartes des numéros">
+      <div id="cards-container" class="cards-grid">
+        <!-- Généré dynamiquement par JS -->
+      </div>
     </section>
   </main>
 
