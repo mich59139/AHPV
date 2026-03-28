@@ -111,6 +111,62 @@ let allArticles = [];
 let filteredArticles = [];
 let currentEditIndex = -1;
 
+// Cache géocodage Nominatim
+const GEOCODE_CACHE = {};
+const GEOCODE_QUEUE = [];
+let geocodeRunning = false;
+
+// Géocodage automatique via Nominatim (OpenStreetMap)
+async function geocodeVille(ville) {
+    if (!ville || ville === '-') return null;
+    var key = normalizeVilleName(ville).toLowerCase().replace(/\s*\(\d+\)\s*/, '');
+    if (GEOCODE_CACHE[key] !== undefined) return GEOCODE_CACHE[key];
+    try {
+        // Chercher d'abord en Isère, puis en France
+        var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=fr&q=' + encodeURIComponent(ville + ', Isère');
+        var resp = await fetch(url, {headers: {'User-Agent': 'AHPV-Carte/1.0'}});
+        var data = await resp.json();
+        if (!data.length) {
+            url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=fr&q=' + encodeURIComponent(ville);
+            resp = await fetch(url, {headers: {'User-Agent': 'AHPV-Carte/1.0'}});
+            data = await resp.json();
+        }
+        if (data.length) {
+            var coords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+            GEOCODE_CACHE[key] = coords;
+            VILLE_COORDINATES[key] = coords;
+            console.log('📍 Géocodé: ' + ville + ' → [' + coords + ']');
+            return coords;
+        }
+        GEOCODE_CACHE[key] = null;
+        console.warn('❌ Non trouvé: ' + ville);
+        return null;
+    } catch (e) {
+        GEOCODE_CACHE[key] = null;
+        return null;
+    }
+}
+
+// Géocoder toutes les villes inconnues (avec rate-limit 1 req/sec pour Nominatim)
+async function geocodeUnknownVilles() {
+    var unknowns = new Set();
+    allArticles.forEach(function(a) {
+        var villes = (a['Ville(s)'] || '').split(',').map(function(v) { return v.trim(); });
+        villes.forEach(function(v) {
+            if (v && v !== '-' && !getVilleCoordinates(v)) unknowns.add(v);
+        });
+    });
+    if (unknowns.size === 0) return;
+    console.log('🔍 Géocodage de ' + unknowns.size + ' ville(s) inconnue(s)...');
+    var arr = Array.from(unknowns);
+    for (var i = 0; i < arr.length; i++) {
+        await geocodeVille(arr[i]);
+        if (i < arr.length - 1) await new Promise(function(r) { setTimeout(r, 1100); }); // Rate limit
+    }
+    // Rafraîchir la carte
+    applyFilters();
+}
+
 // ============================================
 // Initialisation
 // ============================================
@@ -218,7 +274,9 @@ function initMap() {
     L.control.fullscreen({ position: 'topright' }).addTo(map);
 
     initLegend();
-    
+    initMiniMap();
+    initTimeline();
+
     // Gérer le redimensionnement (rotation écran)
     window.addEventListener('resize', debounce(() => {
         if (map) map.invalidateSize();
@@ -280,6 +338,8 @@ function loadData() {
             populateFilters();
             applyFilters();
             hideLoading();
+            // Géocoder les villes inconnues en arrière-plan
+            geocodeUnknownVilles();
         },
         error: (error) => {
             console.error('Erreur CSV:', error);
@@ -432,9 +492,15 @@ function applyFilters() {
             if (!vs.some(v => selectedVilles.includes(v))) return false;
         }
         
+        // Filtre frise chronologique
+        if (window._timelineFilter) {
+            var year = parseInt(article['Année']);
+            if (!year || year < window._timelineFilter.from || year > window._timelineFilter.to) return false;
+        }
+
         return true;
     });
-    
+
     processData();
     updateStats();
 }
@@ -873,6 +939,108 @@ function populateStatsContent() {
 function populateStats() {}
 
 function updateStats() {}
+
+// ============================================
+// Mini-carte (vue d'ensemble)
+// ============================================
+
+function initMiniMap() {
+    var miniTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '',
+        maxZoom: 13
+    });
+    var miniMapCtrl = L.control({position: 'bottomright'});
+    miniMapCtrl.onAdd = function() {
+        var div = L.DomUtil.create('div', 'minimap-container');
+        div.innerHTML = '<div id="minimap" style="width:160px;height:120px;border-radius:10px;border:2px solid rgba(139,69,19,0.3);box-shadow:0 2px 10px rgba(0,0,0,0.2);overflow:hidden"></div>';
+        L.DomEvent.disableClickPropagation(div);
+        return div;
+    };
+    miniMapCtrl.addTo(map);
+
+    setTimeout(function() {
+        var minimap = L.map('minimap', {
+            center: [45.2, 5.7],
+            zoom: 8,
+            zoomControl: false,
+            attributionControl: false,
+            dragging: false,
+            scrollWheelZoom: false,
+            doubleClickZoom: false,
+            touchZoom: false
+        });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 13}).addTo(minimap);
+        // Marqueur Vizille sur la mini-carte
+        L.circleMarker([45.073, 5.773], {radius: 6, color: '#8b4513', fillColor: '#daa520', fillOpacity: 0.9, weight: 2}).addTo(minimap);
+        // Label
+        L.marker([45.073, 5.773], {
+            icon: L.divIcon({className: '', html: '<div style="font-size:10px;font-weight:700;color:#8b4513;text-shadow:0 0 3px #fff;white-space:nowrap">Vizille</div>', iconAnchor: [-8, 5]})
+        }).addTo(minimap);
+        // Marqueurs contexte
+        L.circleMarker([45.188, 5.727], {radius: 4, color: '#666', fillColor: '#999', fillOpacity: 0.7, weight: 1}).addTo(minimap);
+        L.marker([45.188, 5.727], {
+            icon: L.divIcon({className: '', html: '<div style="font-size:9px;color:#666;text-shadow:0 0 3px #fff;white-space:nowrap">Grenoble</div>', iconAnchor: [-6, 5]})
+        }).addTo(minimap);
+    }, 500);
+}
+
+// ============================================
+// Frise chronologique (slider par année)
+// ============================================
+
+function initTimeline() {
+    var ctrl = L.control({position: 'bottomleft'});
+    ctrl.onAdd = function() {
+        var div = L.DomUtil.create('div', 'timeline-container');
+        div.style.cssText = 'background:white;border-radius:12px;padding:10px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.15);min-width:280px;margin-bottom:8px;';
+        div.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+            + '<span style="font-size:12px;font-weight:700;color:#5d2e0d">📅 Période</span>'
+            + '<span id="timeline-label" style="font-size:11px;color:#6b6560;flex:1;text-align:right">Toutes les années</span>'
+            + '<button id="timeline-reset" style="font-size:10px;border:1px solid #ddd;background:#faf8f5;border-radius:6px;padding:2px 8px;cursor:pointer;display:none">✕</button>'
+            + '</div>'
+            + '<div style="display:flex;align-items:center;gap:8px">'
+            + '<span id="timeline-min" style="font-size:11px;color:#6b6560;min-width:32px">1991</span>'
+            + '<input type="range" id="timeline-from" min="1991" max="2026" value="1991" style="flex:1;accent-color:#8b4513;height:4px">'
+            + '<input type="range" id="timeline-to" min="1991" max="2026" value="2026" style="flex:1;accent-color:#daa520;height:4px">'
+            + '<span id="timeline-max" style="font-size:11px;color:#6b6560;min-width:32px">2026</span>'
+            + '</div>';
+        L.DomEvent.disableClickPropagation(div);
+        return div;
+    };
+    ctrl.addTo(map);
+
+    setTimeout(function() {
+        var from = document.getElementById('timeline-from');
+        var to = document.getElementById('timeline-to');
+        var label = document.getElementById('timeline-label');
+        var resetBtn = document.getElementById('timeline-reset');
+        if (!from || !to) return;
+
+        function updateTimeline() {
+            var f = parseInt(from.value);
+            var t = parseInt(to.value);
+            if (f > t) { var tmp = f; f = t; t = tmp; from.value = f; to.value = t; }
+            if (f === 1991 && t === 2026) {
+                label.textContent = 'Toutes les années';
+                resetBtn.style.display = 'none';
+                window._timelineFilter = null;
+            } else {
+                label.textContent = f + ' — ' + t;
+                resetBtn.style.display = '';
+                window._timelineFilter = {from: f, to: t};
+            }
+            applyFilters();
+        }
+
+        from.addEventListener('input', updateTimeline);
+        to.addEventListener('input', updateTimeline);
+        resetBtn.addEventListener('click', function() {
+            from.value = 1991;
+            to.value = 2026;
+            updateTimeline();
+        });
+    }, 300);
+}
 
 // ============================================
 // Utilitaires
