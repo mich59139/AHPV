@@ -974,12 +974,16 @@ function playIntroAnimation(callback) {
     // Bandeau d'animation
     var overlay = document.createElement('div');
     overlay.id = 'intro-overlay';
-    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(45,26,13,0.85);color:white;font-family:Crimson Text,Georgia,serif;transition:opacity .8s;pointer-events:none';
-    overlay.innerHTML = '<div style="font-size:1.1rem;opacity:.7;margin-bottom:8px">Amis de l\'Histoire du Pays Vizillois</div>'
-        + '<div id="intro-year" style="font-size:4rem;font-weight:700;letter-spacing:.05em;text-shadow:0 2px 12px rgba(0,0,0,.3)">' + firstYear + '</div>'
-        + '<div id="intro-count" style="font-size:1rem;opacity:.6;margin-top:8px">0 article</div>'
-        + '<div style="margin-top:20px;width:300px;height:4px;background:rgba(255,255,255,.15);border-radius:4px;overflow:hidden"><div id="intro-bar" style="width:0%;height:100%;background:linear-gradient(90deg,#daa520,#f4d03f);border-radius:4px;transition:width .15s"></div></div>'
-        + '<div style="font-size:.75rem;opacity:.4;margin-top:12px">Exploration du patrimoine local</div>';
+    overlay.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:2000;display:flex;align-items:center;justify-content:center;gap:20px;background:linear-gradient(0deg,rgba(45,26,13,0.92),rgba(45,26,13,0.75));color:white;font-family:Crimson Text,Georgia,serif;transition:opacity .8s,transform .8s;pointer-events:none;padding:16px 24px;backdrop-filter:blur(4px)';
+    overlay.innerHTML = '<div style="text-align:center">'
+        + '<div style="font-size:.8rem;opacity:.6">Amis de l\'Histoire du Pays Vizillois</div>'
+        + '<div style="font-size:.75rem;opacity:.5;margin-top:2px">Exploration du patrimoine local</div>'
+        + '</div>'
+        + '<div id="intro-year" style="font-size:2.5rem;font-weight:700;letter-spacing:.05em;text-shadow:0 2px 8px rgba(0,0,0,.3);min-width:80px;text-align:center">' + firstYear + '</div>'
+        + '<div style="display:flex;flex-direction:column;gap:4px;min-width:200px">'
+        + '<div id="intro-count" style="font-size:.85rem;opacity:.8">0 article</div>'
+        + '<div style="width:100%;height:4px;background:rgba(255,255,255,.15);border-radius:4px;overflow:hidden"><div id="intro-bar" style="width:0%;height:100%;background:linear-gradient(90deg,#daa520,#f4d03f);border-radius:4px;transition:width .15s"></div></div>'
+        + '</div>';
     document.body.appendChild(overlay);
 
     var yearEl = document.getElementById('intro-year');
@@ -998,9 +1002,10 @@ function playIntroAnimation(callback) {
     var timer = setInterval(function() {
         if (yearIndex >= sortedYears.length) {
             clearInterval(timer);
-            // Fondu de sortie
+            // Glissement vers le bas
             setTimeout(function() {
                 overlay.style.opacity = '0';
+                overlay.style.transform = 'translateY(100%)';
                 setTimeout(function() {
                     overlay.remove();
                     callback();
