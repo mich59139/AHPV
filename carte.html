@@ -30,6 +30,8 @@
       <div class="nav-buttons">
         <a href="index.html" class="btn ghost">📋 Catalogue</a>
         <a href="https://mich59139.github.io/bibliotheque-ahpv-/" class="btn ghost">📚 Bibliothèque AHPV</a>
+        <button id="btnHeat" class="btn ghost" title="Carte de chaleur">🔥</button>
+        <button id="btnExport" class="btn ghost" title="Exporter en image">📸</button>
         <button id="btnHelp" class="btn ghost">❓</button>
         <button id="btnStats" class="btn ghost">📊</button>
       </div>
@@ -273,7 +275,13 @@
   <!-- Leaflet JS -->
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  
+
+  <!-- Leaflet Heat (carte de chaleur) -->
+  <script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+  <!-- html2canvas (export PNG) -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
   <!-- PapaParse -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   
