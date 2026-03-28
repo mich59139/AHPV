@@ -237,25 +237,34 @@ function setSaveState(state) {
 // -----------------------------
 
 function getStoredToken() {
-  try {
-    return localStorage.getItem("ahpv_token") || null;
-  } catch {
-    return null;
-  }
+  // Sécurité : le token n'est JAMAIS stocké dans le navigateur
+  // Il doit être saisi à chaque session par l'admin
+  try { localStorage.removeItem("ahpv_token"); } catch {}
+  return null;
 }
 
 function storeToken(token) {
-  try {
-    if (token) localStorage.setItem("ahpv_token", token);
-    else localStorage.removeItem("ahpv_token");
-  } catch {}
+  // Ne rien stocker — sécurité
 }
 
 function updateAuthStatus() {
   const sa = document.getElementById("status-auth");
   if (sa) {
-    sa.textContent = GHTOKEN ? "🔐 Connecté" : "🔓 Invité";
+    sa.textContent = GHTOKEN ? "🔐 Admin" : "🔓 Lecture seule";
   }
+}
+
+function toggleAdminUI(show) {
+  // Masquer/afficher tous les éléments d'édition
+  var sel = '.edit, #add-article-btn, #logout-btn, [data-admin]';
+  document.querySelectorAll(sel).forEach(function(el) {
+    el.style.display = show ? '' : 'none';
+  });
+  // Le bouton login est inversé
+  var loginBtn = document.getElementById('login-btn');
+  if (loginBtn) loginBtn.style.display = show ? 'none' : '';
+  // Réafficher le tableau si on vient de se connecter
+  if (show) render();
 }
 
 async function githubRequest(path, opts = {}) {
@@ -1346,25 +1355,26 @@ function bindAuth() {
 
   loginBtn?.addEventListener("click", () => {
     const token = prompt(
-      "Collez ici un token GitHub (scope: repo). Il sera stocké en local."
+      "🔐 Mode admin — Collez votre token GitHub.\nIl ne sera PAS sauvegardé et disparaîtra à la fermeture de la page."
     );
     if (!token) return;
     GHTOKEN = token.trim();
-    storeToken(GHTOKEN);
     updateAuthStatus();
-    showToast("Token GitHub enregistré localement.", "success");
+    toggleAdminUI(true);
+    showToast("Mode admin activé pour cette session.", "success");
   });
 
   logoutBtn?.addEventListener("click", () => {
-    if (!confirm("Supprimer le token GitHub local ?")) return;
     GHTOKEN = null;
-    storeToken(null);
     updateAuthStatus();
-    showToast("Token GitHub supprimé.", "info");
+    toggleAdminUI(false);
+    showToast("Mode admin désactivé.", "info");
   });
 
-  GHTOKEN = getStoredToken();
+  GHTOKEN = null; // Jamais de token au démarrage
   updateAuthStatus();
+  // Masquer les éléments admin au démarrage
+  setTimeout(function(){ toggleAdminUI(false); }, 100);
 }
 
 // -----------------------------
