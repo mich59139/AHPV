@@ -411,6 +411,16 @@ function applyFilters() {
 }
 
 function render() {
+  // Si on est en mode cartes, rafraîchir les cartes aussi
+  if (currentView === 'cards') {
+    renderCardsView();
+    // Mettre à jour le compteur
+    const filtered = applyFilters();
+    const sc = document.getElementById("status-count");
+    if (sc) sc.textContent = `Résultats : ${filtered.length} / ${ARTICLES.length}`;
+    return;
+  }
+
   const rows  = applyFilters();
   const total = rows.length;
   const pages = Math.max(1, Math.ceil(total / pageSize));
@@ -1551,8 +1561,11 @@ function renderCardsView() {
 
   container.innerHTML = '';
 
+  // Utiliser les articles filtrés (pas tous les articles)
+  const filtered = applyFilters();
+
   // Grouper par numéro
-  const groups = groupArticlesByNumero(ARTICLES);
+  const groups = groupArticlesByNumero(filtered);
 
   // Trier par numéro décroissant (plus récent en premier)
   // Les numéros "bis" viennent juste après leur numéro principal
