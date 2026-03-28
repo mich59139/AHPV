@@ -1677,10 +1677,20 @@ async function init() {
     bindListsEditor();
     bindViewToggle();
 
-    render();
+    // Lire les paramètres URL (lien depuis la carte)
+    var urlParams = new URLSearchParams(window.location.search);
+    var urlQuery = urlParams.get('q');
+    if (urlQuery) {
+      QUERY = urlQuery;
+      var searchBox = document.getElementById('search-input');
+      if (searchBox) searchBox.value = urlQuery;
+      switchToListView();
+    } else {
+      // Afficher la vue Cartes par défaut
+      switchToCardsView();
+    }
 
-    // Afficher la vue Cartes par défaut
-    switchToCardsView();
+    render();
 
     console.log("✅ Application initialisée avec succès");
   } catch (err) {
