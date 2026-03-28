@@ -411,14 +411,9 @@ function applyFilters() {
 }
 
 function render() {
-  // Si on est en mode cartes, rafraîchir les cartes aussi
-  if (currentView === 'cards') {
-    renderCardsView();
-    // Mettre à jour le compteur
-    const filtered = applyFilters();
-    const sc = document.getElementById("status-count");
-    if (sc) sc.textContent = `Résultats : ${filtered.length} / ${ARTICLES.length}`;
-    return;
+  // Si on est en mode cartes et qu'une recherche est active, basculer en liste
+  if (currentView === 'cards' && (QUERY || FILTER_YEAR || FILTER_NUMERO || FILTER_EPOQUE || FILTER_THEME)) {
+    switchToListView();
   }
 
   const rows  = applyFilters();
