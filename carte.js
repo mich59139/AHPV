@@ -336,10 +336,13 @@ function loadData() {
 
             filteredArticles = allArticles;
             populateFilters();
-            applyFilters();
             hideLoading();
-            // Géocoder les villes inconnues en arrière-plan
-            geocodeUnknownVilles();
+            // Animation d'ouverture
+            playIntroAnimation(function() {
+                applyFilters();
+                // Géocoder les villes inconnues en arrière-plan
+                geocodeUnknownVilles();
+            });
         },
         error: (error) => {
             console.error('Erreur CSV:', error);
@@ -939,6 +942,95 @@ function populateStatsContent() {
 function populateStats() {}
 
 function updateStats() {}
+
+// ============================================
+// Animation d'ouverture
+// ============================================
+
+function playIntroAnimation(callback) {
+    // Trouver la plage d'années
+    var years = {};
+    allArticles.forEach(function(a) {
+        var y = parseInt(a['Année']);
+        if (y) {
+            if (!years[y]) years[y] = [];
+            years[y].push(a);
+        }
+    });
+    var sortedYears = Object.keys(years).map(Number).sort();
+    if (sortedYears.length === 0) { callback(); return; }
+
+    var firstYear = sortedYears[0];
+    var lastYear = sortedYears[sortedYears.length - 1];
+
+    // Bandeau d'animation
+    var overlay = document.createElement('div');
+    overlay.id = 'intro-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(45,26,13,0.85);color:white;font-family:Crimson Text,Georgia,serif;transition:opacity .8s;pointer-events:none';
+    overlay.innerHTML = '<div style="font-size:1.1rem;opacity:.7;margin-bottom:8px">Amis de l\'Histoire du Pays Vizillois</div>'
+        + '<div id="intro-year" style="font-size:4rem;font-weight:700;letter-spacing:.05em;text-shadow:0 2px 12px rgba(0,0,0,.3)">' + firstYear + '</div>'
+        + '<div id="intro-count" style="font-size:1rem;opacity:.6;margin-top:8px">0 article</div>'
+        + '<div style="margin-top:20px;width:300px;height:4px;background:rgba(255,255,255,.15);border-radius:4px;overflow:hidden"><div id="intro-bar" style="width:0%;height:100%;background:linear-gradient(90deg,#daa520,#f4d03f);border-radius:4px;transition:width .15s"></div></div>'
+        + '<div style="font-size:.75rem;opacity:.4;margin-top:12px">Exploration du patrimoine local</div>';
+    document.body.appendChild(overlay);
+
+    var yearEl = document.getElementById('intro-year');
+    var countEl = document.getElementById('intro-count');
+    var barEl = document.getElementById('intro-bar');
+
+    // Ajouter les marqueurs progressivement
+    markerClusterGroup.clearLayers();
+    markers = [];
+
+    var totalArticles = 0;
+    var yearIndex = 0;
+    var duration = 4000; // 4 secondes pour toute l'animation
+    var interval = Math.max(50, Math.floor(duration / sortedYears.length));
+
+    var timer = setInterval(function() {
+        if (yearIndex >= sortedYears.length) {
+            clearInterval(timer);
+            // Fondu de sortie
+            setTimeout(function() {
+                overlay.style.opacity = '0';
+                setTimeout(function() {
+                    overlay.remove();
+                    callback();
+                }, 800);
+            }, 600);
+            return;
+        }
+
+        var yr = sortedYears[yearIndex];
+        var arts = years[yr];
+        totalArticles += arts.length;
+
+        if (yearEl) yearEl.textContent = yr;
+        if (countEl) countEl.textContent = totalArticles + ' article' + (totalArticles > 1 ? 's' : '') + ' publiés';
+        if (barEl) barEl.style.width = Math.round((yearIndex + 1) / sortedYears.length * 100) + '%';
+
+        // Ajouter les marqueurs de cette année
+        var articlesByVille = {};
+        arts.forEach(function(article) {
+            var villes = (article['Ville(s)'] || '').split(',').map(function(v) { return v.trim(); }).filter(Boolean);
+            villes.forEach(function(ville) {
+                var coords = getVilleCoordinates(ville);
+                if (!ville || ville === '-' || !coords) return;
+                if (!articlesByVille[ville]) articlesByVille[ville] = [];
+                articlesByVille[ville].push(article);
+            });
+        });
+
+        for (var ville in articlesByVille) {
+            var coords = getVilleCoordinates(ville);
+            if (coords) {
+                createMarker(ville, articlesByVille[ville], coords);
+            }
+        }
+
+        yearIndex++;
+    }, interval);
+}
 
 // ============================================
 // Mini-carte (vue d'ensemble)
