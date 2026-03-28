@@ -818,6 +818,14 @@ function onFilterModeChange() {
 // ============================================
 
 function initModalListeners() {
+    // Heat map
+    var btnHeat = document.getElementById('btnHeat');
+    if (btnHeat) btnHeat.addEventListener('click', toggleHeatMap);
+
+    // Export PNG
+    var btnExport = document.getElementById('btnExport');
+    if (btnExport) btnExport.addEventListener('click', exportMapPNG);
+
     // Aide
     const btnHelp = document.getElementById('btnHelp');
     const helpModal = document.getElementById('helpModal');
@@ -1130,6 +1138,129 @@ function initTimeline() {
             from.value = 1991;
             to.value = 2026;
             updateTimeline();
+        });
+    }, 300);
+}
+
+// ============================================
+// Carte de chaleur (Heat Map)
+// ============================================
+
+let heatLayer = null;
+let heatVisible = false;
+
+function toggleHeatMap() {
+    if (heatVisible) {
+        if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+        heatVisible = false;
+        markerClusterGroup.addTo(map);
+        document.getElementById('btnHeat').style.background = '';
+        return;
+    }
+
+    // Construire les points de chaleur
+    var heatPoints = [];
+    var articlesByVille = {};
+    filteredArticles.forEach(function(a) {
+        var villes = (a['Ville(s)'] || '').split(',').map(function(v) { return v.trim(); }).filter(Boolean);
+        villes.forEach(function(v) {
+            var coords = getVilleCoordinates(v);
+            if (coords) {
+                if (!articlesByVille[v]) articlesByVille[v] = 0;
+                articlesByVille[v]++;
+            }
+        });
+    });
+
+    for (var ville in articlesByVille) {
+        var coords = getVilleCoordinates(ville);
+        if (coords) {
+            // [lat, lng, intensité]
+            heatPoints.push([coords[0], coords[1], articlesByVille[ville]]);
+        }
+    }
+
+    if (heatPoints.length === 0) return;
+
+    // Cacher les marqueurs, afficher la heatmap
+    map.removeLayer(markerClusterGroup);
+    heatLayer = L.heatLayer(heatPoints, {
+        radius: 35,
+        blur: 25,
+        maxZoom: 14,
+        max: Math.max.apply(null, heatPoints.map(function(p) { return p[2]; })),
+        gradient: {
+            0.2: '#ffffb2',
+            0.4: '#fed976',
+            0.6: '#feb24c',
+            0.8: '#f03b20',
+            1.0: '#bd0026'
+        }
+    });
+    heatLayer.addTo(map);
+    heatVisible = true;
+    document.getElementById('btnHeat').style.background = 'rgba(255,100,50,.3)';
+}
+
+// ============================================
+// Export PNG
+// ============================================
+
+function exportMapPNG() {
+    var mapEl = document.getElementById('map');
+    if (!mapEl || typeof html2canvas === 'undefined') {
+        alert('Export non disponible');
+        return;
+    }
+
+    // Notification
+    var toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:9999;background:#5d2e0d;color:white;padding:12px 24px;border-radius:10px;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.3)';
+    toast.textContent = '📸 Capture en cours...';
+    document.body.appendChild(toast);
+
+    setTimeout(function() {
+        html2canvas(mapEl, {
+            useCORS: true,
+            allowTaint: true,
+            scale: 2,
+            backgroundColor: '#f5f0e8'
+        }).then(function(canvas) {
+            // Ajouter titre et date
+            var finalCanvas = document.createElement('canvas');
+            var ctx = finalCanvas.getContext('2d');
+            var padding = 80;
+            finalCanvas.width = canvas.width;
+            finalCanvas.height = canvas.height + padding;
+
+            // Fond
+            ctx.fillStyle = '#faf8f5';
+            ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+
+            // Titre
+            ctx.fillStyle = '#5d2e0d';
+            ctx.font = 'bold 28px Source Sans 3, sans-serif';
+            ctx.fillText('AHPV — Carte Interactive des Articles', 20, 35);
+            ctx.fillStyle = '#6b6560';
+            ctx.font = '18px Source Sans 3, sans-serif';
+            ctx.fillText('Amis de l\'Histoire du Pays Vizillois — ' + new Date().toLocaleDateString('fr-FR'), 20, 60);
+
+            // Carte
+            ctx.drawImage(canvas, 0, padding);
+
+            // Télécharger
+            var link = document.createElement('a');
+            link.download = 'AHPV-carte-' + new Date().toISOString().slice(0, 10) + '.png';
+            link.href = finalCanvas.toDataURL('image/png');
+            link.click();
+
+            toast.textContent = '✅ Image téléchargée !';
+            toast.style.background = '#2e7d32';
+            setTimeout(function() { toast.remove(); }, 2000);
+        }).catch(function(err) {
+            toast.textContent = '❌ Erreur : ' + err.message;
+            toast.style.background = '#c62828';
+            setTimeout(function() { toast.remove(); }, 3000);
         });
     }, 300);
 }
