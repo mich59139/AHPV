@@ -10,77 +10,75 @@ const CONFIG = {
     csvPath: 'data/articles.csv'
 };
 
-// Coordonnées GPS - v2.1 avec 69 lieux
+// Coordonnées GPS - v2.1 avec 69 lieux + normalisation
 const VILLE_COORDINATES = {
-    'Allemond (38114)': [45.132, 6.040],
-    'Belledonne': [45.200, 5.980],
-    "Bessey d'Oz": [45.098, 6.050],
-    "Bourg d'Oisans": [45.056, 6.030],
-    'Brandes en Oisans': [45.103, 6.082],
-    'Bresson': [45.139, 5.740],
-    'Brié': [45.125, 5.793],
-    'Brié et Angonnes': [45.125, 5.793],
-    'Canton (38220)': [45.073, 5.773],
-    'Champ sur Drac': [45.080, 5.733],
-    'Champagnier': [45.112, 5.721],
-    'Chamrousse': [45.117, 5.878],
-    'Cholonge': [44.979, 5.741],
-    'Claix': [45.123, 5.673],
-    'Clelles': [44.822, 5.631],
-    'Comboire (Échirolles)': [45.135, 5.714],
-    'Crots': [44.545, 6.447],
-    'Dauphiné': [45.200, 5.700],
-    'Eybens': [45.147, 5.753],
-    'Fontaine': [45.192, 5.689],
-    'France': [46.603, 2.440],
+    'allemond': [45.132, 6.040],
+    'belledonne': [45.200, 5.980],
+    "bessey d'oz": [45.098, 6.050],
+    "bourg d'oisans": [45.056, 6.030],
+    'brandes en oisans': [45.103, 6.082],
+    'bresson': [45.139, 5.740],
+    'brié': [45.125, 5.793],
+    'brié et angonnes': [45.125, 5.793],
+    'canton': [45.073, 5.773],
+    'champ sur drac': [45.080, 5.733],
+    'champagnier': [45.112, 5.721],
+    'chamrousse': [45.117, 5.878],
+    'cholonge': [44.979, 5.741],
+    'claix': [45.123, 5.673],
+    'clelles': [44.822, 5.631],
+    'comboire': [45.135, 5.714],
+    'crots': [44.545, 6.447],
+    'dauphiné': [45.200, 5.700],
+    'eybens': [45.147, 5.753],
+    'fontaine': [45.192, 5.689],
     'france': [46.603, 2.440],
-    'Gavet': [45.055, 5.870],
-    'Grenoble': [45.188, 5.727],
-    'Haute-Jarrie': [45.092, 5.763],
-    'Herbeys': [45.137, 5.798],
-    'Isère': [45.200, 5.700],
-    'Jarrie': [45.115, 5.758],
-    "L'Alpe d'Huez": [45.092, 6.072],
-    "L'Oisans": [45.100, 6.000],
-    'La Morte': [45.027, 5.862],
-    'La Paute': [45.080, 5.897],
-    'Laffrey': [45.008, 5.767],
-    'Livet': [45.093, 5.915],
-    'Livet et Gavet': [45.093, 5.915],
-    'Lyon': [45.764, 4.835],
-    'Massif de Belledonne': [45.200, 5.980],
-    'Matheysine': [44.967, 5.783],
-    'Monestier de Clermont': [44.919, 5.635],
-    'Mont Aiguille': [44.844, 5.554],
-    'Montchaboud': [45.125, 5.770],
-    'Montchaffrey': [45.110, 5.829],
-    'Montjean': [45.046, 5.718],
-    'Notre Dame de Mésage': [45.074, 5.749],
-    'Oisans ou Vizille': [45.073, 5.773],
-    'Pays Vizillois': [45.073, 5.773],
-    'Pays vizillois': [45.073, 5.773],
-    'Pellafol': [44.778, 5.893],
-    'Petichet': [44.991, 5.765],
-    'Rioupéroux': [45.092, 5.903],
-    'Saint Barthélémy de Séchilienne': [45.031, 5.823],
-    'Saint Georges de Commiers': [45.046, 5.704],
-    'Saint Jean de Vaux': [45.052, 5.768],
-    'Saint Martin de la Cluze': [45.031, 5.697],
-    'Saint Paul de Varces': [45.069, 5.663],
-    'Saint Pierre de Mésage': [45.070, 5.760],
-    'Saint-Maurice-en-Trièves': [44.859, 5.681],
-    'Sassenage': [45.212, 5.661],
-    'Séchilienne': [45.054, 5.835],
-    'Tavernolles': [45.042, 5.695],
-    'Uriage': [45.147, 5.826],
-    'Varces': [45.092, 5.676],
-    'Vaulnaveys': [45.111, 5.818],
-    'Vaulnaveys le bas': [45.107, 5.811],
-    'Vaulnaveys le haut': [45.115, 5.825],
-    'Verdun': [49.160, 5.387],
-    "Villeneuve d'Uriage": [45.137, 5.842],
-    'Vizille': [45.073, 5.773],
-    'vizille': [45.073, 5.773]
+    'gavet': [45.055, 5.870],
+    'grenoble': [45.188, 5.727],
+    'haute-jarrie': [45.092, 5.763],
+    'herbeys': [45.137, 5.798],
+    'isère': [45.200, 5.700],
+    'jarrie': [45.115, 5.758],
+    "l'alpe d'huez": [45.092, 6.072],
+    "l'oisans": [45.100, 6.000],
+    'la morte': [45.027, 5.862],
+    'la paute': [45.080, 5.897],
+    'laffrey': [45.008, 5.767],
+    'livet': [45.093, 5.915],
+    'livet et gavet': [45.093, 5.915],
+    'lyon': [45.764, 4.835],
+    'massif de belledonne': [45.200, 5.980],
+    'matheysine': [44.967, 5.783],
+    'monestier de clermont': [44.919, 5.635],
+    'mont aiguille': [44.844, 5.554],
+    'montchaboud': [45.125, 5.770],
+    'montchaffrey': [45.110, 5.829],
+    'montjean': [45.046, 5.718],
+    'notre dame de mésage': [45.074, 5.749],
+    'oisans': [45.073, 5.773],
+    'pays vizillois': [45.073, 5.773],
+    'pellafol': [44.778, 5.893],
+    'petichet': [44.991, 5.765],
+    'rioupéroux': [45.092, 5.903],
+    'saint barthélémy de séchilienne': [45.031, 5.823],
+    'saint georges de commiers': [45.046, 5.704],
+    'saint jean de vaux': [45.052, 5.768],
+    'saint martin de la cluze': [45.031, 5.697],
+    'saint paul de varces': [45.069, 5.663],
+    'saint pierre de mésage': [45.070, 5.760],
+    'saint-maurice-en-trièves': [44.859, 5.681],
+    'sassenage': [45.212, 5.661],
+    'séchilienne': [45.054, 5.835],
+    'tavernolles': [45.042, 5.695],
+    'uriage': [45.147, 5.826],
+    'varces': [45.092, 5.676],
+    'vaulnaveys': [45.111, 5.818],
+    'vaulnaveys le bas': [45.107, 5.811],
+    'vaulnaveys le haut': [45.115, 5.825],
+    'verdun': [49.160, 5.387],
+    "villeneuve d'uriage": [45.137, 5.842],
+    'vizille': [45.073, 5.773],
+    'échirolles': [45.135, 5.714]
 };
 
 // Normaliser les noms de villes (apostrophes, espaces)
@@ -92,29 +90,17 @@ function normalizeVilleName(name) {
         .replace(/\s+/g, ' '); // espaces multiples
 }
 
-// Chercher les coordonnées avec normalisation
+// Chercher les coordonnées — toutes les clés sont en minuscules
 function getVilleCoordinates(ville) {
     if (!ville) return null;
-    
-    // Essai direct
-    if (VILLE_COORDINATES[ville]) return VILLE_COORDINATES[ville];
-    
-    // Essai normalisé
-    const normalized = normalizeVilleName(ville);
-    for (const [key, coords] of Object.entries(VILLE_COORDINATES)) {
-        if (normalizeVilleName(key) === normalized) {
-            return coords;
-        }
-    }
-    
-    // Essai insensible à la casse
-    const lowerVille = normalized.toLowerCase();
-    for (const [key, coords] of Object.entries(VILLE_COORDINATES)) {
-        if (normalizeVilleName(key).toLowerCase() === lowerVille) {
-            return coords;
-        }
-    }
-    
+    // Normaliser : minuscules, retirer codes postaux, apostrophes
+    var key = normalizeVilleName(ville).toLowerCase()
+        .replace(/\s*\(\d+\)\s*/, '')  // retirer (38220) etc.
+        .replace(/oisans ou vizille/i, 'vizille');
+    if (VILLE_COORDINATES[key]) return VILLE_COORDINATES[key];
+    // Essai partiel (ex: "Comboire (Échirolles)" → "comboire")
+    var first = key.split('(')[0].trim().split(',')[0].trim();
+    if (VILLE_COORDINATES[first]) return VILLE_COORDINATES[first];
     return null;
 }
 
@@ -203,6 +189,34 @@ function initMap() {
     L.control.home = function (opts) { return new L.Control.Home(opts); };
     L.control.home({ position: 'topright' }).addTo(map);
 
+    // Bouton Plein écran
+    L.Control.Fullscreen = L.Control.extend({
+        onAdd: function () {
+            const btn = L.DomUtil.create('button', 'btn btn-secondary leaflet-bar-part');
+            btn.innerHTML = '⛶';
+            btn.title = 'Plein écran';
+            btn.style.fontSize = '18px';
+            btn.onclick = (e) => {
+                L.DomEvent.stopPropagation(e);
+                var el = document.getElementById('map');
+                if (!document.fullscreenElement) {
+                    (el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen).call(el);
+                    btn.innerHTML = '✕';
+                    btn.title = 'Quitter le plein écran';
+                } else {
+                    (document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen).call(document);
+                    btn.innerHTML = '⛶';
+                    btn.title = 'Plein écran';
+                }
+                setTimeout(function(){ if(map) map.invalidateSize(); }, 300);
+            };
+            return btn;
+        },
+        onRemove: function () {}
+    });
+    L.control.fullscreen = function (opts) { return new L.Control.Fullscreen(opts); };
+    L.control.fullscreen({ position: 'topright' }).addTo(map);
+
     initLegend();
     
     // Gérer le redimensionnement (rotation écran)
@@ -219,17 +233,17 @@ function initLegend() {
     const legend = L.control({ position: 'bottomleft' });
     legend.onAdd = function () {
         const div = L.DomUtil.create('div', 'info legend');
-        div.innerHTML = `
-            <div style="font-weight:bold; margin-bottom:6px;">Légende</div>
-            <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
-                <span style="width:16px; height:16px; border-radius:50%; background:#1e3a5f; display:inline-block;"></span>
-                <span>Pays vizillois</span>
-            </div>
-            <div style="display:flex; align-items:center; gap:6px;">
-                <span style="width:16px; height:16px; border-radius:50%; background:#6b5c4a; display:inline-block;"></span>
-                <span>Autre localisation</span>
-            </div>
-        `;
+        var html = '<div style="font-weight:bold; margin-bottom:6px;">Couleur par thème</div>';
+        var shown = {};
+        for (var key in THEME_COLORS) {
+            if (!shown[THEME_COLORS[key]]) {
+                html += '<div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;font-size:12px;">'
+                    + '<span style="width:12px;height:12px;border-radius:50%;background:'+THEME_COLORS[key]+';display:inline-block;flex-shrink:0"></span>'
+                    + '<span>'+key.charAt(0).toUpperCase()+key.slice(1)+'</span></div>';
+                shown[THEME_COLORS[key]] = true;
+            }
+        }
+        div.innerHTML = html;
         return div;
     };
     legend.addTo(map);
@@ -487,14 +501,48 @@ function processData() {
     }
 }
 
+// Couleurs par thème principal
+const THEME_COLORS = {
+    'patrimoine': '#1e3a5f',
+    'architecture': '#2d5a87',
+    'histoire': '#6b4423',
+    'guerre': '#dc2626',
+    'religion': '#7c3aed',
+    'industrie': '#d97706',
+    'nature': '#16a34a',
+    'agriculture': '#65a30d',
+    'personnage': '#0891b2',
+    'transport': '#3B82F6',
+    'art': '#db2777',
+    'éducation': '#6366F1',
+    'économie': '#14B8A6',
+    'société': '#F59E0B',
+    'géographie': '#059669'
+};
+const DEFAULT_MARKER_COLOR = '#1e3a5f';
+
+function getThemeColor(articles) {
+    // Trouver le thème le plus fréquent
+    var counts = {};
+    articles.forEach(function(a) {
+        var t = (a['Theme(s)'] || '').split(',')[0].trim().toLowerCase();
+        if (t) counts[t] = (counts[t] || 0) + 1;
+    });
+    var best = '';
+    var bestN = 0;
+    for (var t in counts) { if (counts[t] > bestN) { best = t; bestN = counts[t]; } }
+    // Chercher une correspondance partielle dans THEME_COLORS
+    for (var key in THEME_COLORS) {
+        if (best.includes(key) || key.includes(best)) return THEME_COLORS[key];
+    }
+    return DEFAULT_MARKER_COLOR;
+}
+
 function createMarker(ville, articles, coords) {
-    const isPaysVizille = ['Vizille','Jarrie','Séchilienne','Saint Georges de Commiers',
-    'Champ sur Drac','Notre Dame de Mésage','Saint Pierre de Mésage',
-    'Vaulnaveys le bas','Vaulnaveys le haut','Uriage','Champagnier',
-    'Bresson','Herbeys','Varces','Claix','Pays vizillois', 'Vaulnaveys (seul)'].includes(ville);
+    var color = getThemeColor(articles);
 
     const markerHtml = `
-        <div class="custom-marker" style="background:${isPaysVizille ? '#1e3a5f' : '#6b5c4a'};">
+        <div class="custom-marker" style="background:${color};">
             <div class="marker-content">
                 <span class="marker-ville">${ville}</span>
                 <span class="marker-count">${articles.length}</span>
@@ -557,6 +605,7 @@ function generateArticlesHtml(articles) {
                 ${article['Theme(s)'] ? `<div class="article-themes">🏷️ ${article['Theme(s)']}</div>` : ''}
                 
                 <div class="article-actions">
+                    <a href="index.html?q=${encodeURIComponent(article.Titre)}" class="btn-link" style="text-decoration:none;color:var(--accent,#1e3a5f);font-size:13px;font-weight:600;">📋 Voir dans le catalogue</a>
                     <button class="btn-edit" onclick="openEditModal(${globalIndex})">
                         ✏️ Modifier
                     </button>
