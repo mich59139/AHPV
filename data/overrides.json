@@ -1,0 +1,141 @@
+{
+  "_comment": "Overrides manuels — priment sur le résultat BAN. Édité via le mode ajustement de la carte (bouton 🎯) ou à la main.",
+  "vizille": {
+    "coords": [45.0786, 5.7740],
+    "label": "Vizille (centre, place du Château)",
+    "kind": "commune"
+  },
+  "oisans": {
+    "coords": [45.080, 6.030],
+    "label": "L'Oisans (massif, approximatif)",
+    "kind": "region",
+    "approx": true
+  },
+  "l'oisans": {
+    "coords": [45.080, 6.030],
+    "label": "L'Oisans (massif, approximatif)",
+    "kind": "region",
+    "approx": true
+  },
+  "pays vizillois": {
+    "coords": [45.0786, 5.7740],
+    "label": "Pays vizillois (centré sur Vizille)",
+    "kind": "region",
+    "approx": true
+  },
+  "canton": {
+    "coords": [45.0786, 5.7740],
+    "label": "Canton de Vizille",
+    "kind": "region",
+    "approx": true
+  },
+  "matheysine": {
+    "coords": [44.967, 5.783],
+    "label": "Matheysine (plateau, approximatif)",
+    "kind": "region",
+    "approx": true
+  },
+  "belledonne": {
+    "coords": [45.200, 5.980],
+    "label": "Massif de Belledonne (approximatif)",
+    "kind": "region",
+    "approx": true
+  },
+  "massif de belledonne": {
+    "coords": [45.200, 5.980],
+    "label": "Massif de Belledonne (approximatif)",
+    "kind": "region",
+    "approx": true
+  },
+  "dauphiné": {
+    "coords": [45.200, 5.700],
+    "label": "Dauphiné (province, approximatif)",
+    "kind": "region",
+    "approx": true
+  },
+  "isère": {
+    "coords": [45.200, 5.700],
+    "label": "Département de l'Isère (approximatif)",
+    "kind": "region",
+    "approx": true
+  },
+  "france": {
+    "coords": [46.603, 2.440],
+    "label": "France (centroïde)",
+    "kind": "region",
+    "approx": true
+  },
+  "mont aiguille": {
+    "coords": [44.844, 5.554],
+    "label": "Mont Aiguille",
+    "kind": "lieu-dit"
+  },
+  "brandes en oisans": {
+    "coords": [45.103, 6.082],
+    "label": "Brandes-en-Oisans (site archéologique)",
+    "kind": "lieu-dit"
+  },
+  "comboire": {
+    "coords": [45.135, 5.714],
+    "label": "Comboire (Échirolles)",
+    "kind": "lieu-dit"
+  },
+  "petichet": {
+    "coords": [44.991, 5.762],
+    "label": "Petichet (hameau de Saint-Théoffrey)",
+    "kind": "lieu-dit"
+  },
+  "rioupéroux": {
+    "coords": [45.0923, 5.9035],
+    "label": "Rioupéroux (Livet-et-Gavet, vallée de la Romanche)",
+    "kind": "lieu-dit"
+  },
+  "vaulnaveys le haut": {
+    "coords": [45.115, 5.825],
+    "label": "Vaulnaveys-le-Haut",
+    "kind": "commune"
+  },
+  "saint pierre de mésage": {
+    "coords": [45.062, 5.770],
+    "label": "Saint-Pierre-de-Mésage",
+    "kind": "commune"
+  },
+  "villeneuve d'uriage": {
+    "coords": [45.137, 5.842],
+    "label": "Villeneuve-d'Uriage (hameau)",
+    "kind": "lieu-dit"
+  },
+  "uriage": {
+    "coords": [45.147, 5.826],
+    "label": "Uriage-les-Bains (hameau de Saint-Martin-d'Uriage)",
+    "kind": "lieu-dit"
+  },
+  "bessey d'oz": {
+    "coords": [45.058, 6.150],
+    "label": "Besse-en-Oisans (Bessey d'Oz, ancien)",
+    "kind": "commune",
+    "approx": true
+  },
+  "tavernolles": {
+    "coords": [45.1368, 5.7699],
+    "label": "Tavernolles (hameau de Brié-et-Angonnes)",
+    "kind": "lieu-dit"
+  },
+  "montjean": {
+    "coords": [45.0793, 5.8001],
+    "label": "Montjean (hameau de Vizille, hauteurs côté Belledonne)",
+    "kind": "lieu-dit"
+  },
+  "montchaffrey": {
+    "coords": [45.10124, 5.82576],
+    "label": "Montchaffrey",
+    "kind": "lieu-dit"
+  },
+  "verdun": {
+    "coords": [49.160, 5.387],
+    "label": "Verdun (Meuse) — à confirmer selon contexte",
+    "kind": "commune",
+    "approx": true,
+    "todo": true
+  }
+}

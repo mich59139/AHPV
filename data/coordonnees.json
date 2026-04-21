@@ -1,0 +1,772 @@
+{
+  "allemond": {
+    "source": "ban-municipality",
+    "coords": [
+      45.16753,
+      6.03747
+    ],
+    "label": "Allemond",
+    "citycode": "38005",
+    "score": 0.9249923616676136,
+    "distance_vizille_km": 22.91,
+    "display_name": "Allemond (38114)"
+  },
+  "angonnes": {
+    "source": "ban-municipality",
+    "coords": [
+      45.12628,
+      5.77683
+    ],
+    "label": "Brié-et-Angonnes",
+    "citycode": "38059",
+    "score": 0.6937568354376068,
+    "distance_vizille_km": 5.31,
+    "display_name": "Angonnes"
+  },
+  "belledonne": {
+    "coords": [
+      45.2,
+      5.98
+    ],
+    "label": "Massif de Belledonne (approximatif)",
+    "kind": "region",
+    "approx": true,
+    "source": "override",
+    "display_name": "Belledonne"
+  },
+  "bessey d'oz": {
+    "coords": [
+      45.058,
+      6.15
+    ],
+    "label": "Besse-en-Oisans (Bessey d'Oz, ancien)",
+    "kind": "commune",
+    "approx": true,
+    "source": "override",
+    "display_name": "Bessey d'Oz"
+  },
+  "bourg d'oisans": {
+    "source": "ban-municipality",
+    "coords": [
+      45.0521,
+      6.03831
+    ],
+    "label": "Le Bourg-d'Oisans",
+    "citycode": "38052",
+    "score": 0.6814634338042157,
+    "distance_vizille_km": 20.97,
+    "display_name": "Bourg d'Oisans"
+  },
+  "brandes en oisans": {
+    "coords": [
+      45.103,
+      6.082
+    ],
+    "label": "Brandes-en-Oisans (site archéologique)",
+    "kind": "lieu-dit",
+    "source": "override",
+    "display_name": "Brandes en Oisans"
+  },
+  "bresson": {
+    "source": "ban-municipality",
+    "coords": [
+      45.13868,
+      5.74553
+    ],
+    "label": "Bresson",
+    "citycode": "38057",
+    "score": 0.9375417360824699,
+    "distance_vizille_km": 7.04,
+    "display_name": "Bresson"
+  },
+  "brié": {
+    "source": "ban-municipality",
+    "coords": [
+      45.12628,
+      5.77683
+    ],
+    "label": "Brié-et-Angonnes",
+    "citycode": "38059",
+    "score": 0.8604235021042735,
+    "distance_vizille_km": 5.31,
+    "display_name": "Brié"
+  },
+  "brié et angonnes": {
+    "source": "ban-municipality",
+    "coords": [
+      45.12628,
+      5.77683
+    ],
+    "label": "Brié-et-Angonnes",
+    "citycode": "38059",
+    "score": 0.9437568354376068,
+    "distance_vizille_km": 5.31,
+    "display_name": "Brié et Angonnes"
+  },
+  "canton": {
+    "coords": [
+      45.0786,
+      5.774
+    ],
+    "label": "Canton de Vizille",
+    "kind": "region",
+    "approx": true,
+    "source": "override",
+    "display_name": "Canton (38220)"
+  },
+  "champ sur drac": {
+    "source": "ban-municipality",
+    "coords": [
+      45.076,
+      5.73268
+    ],
+    "label": "Champ-sur-Drac",
+    "citycode": "38071",
+    "score": 0.9455416693396435,
+    "distance_vizille_km": 3.26,
+    "display_name": "Champ sur Drac"
+  },
+  "champagnier": {
+    "source": "ban-municipality",
+    "coords": [
+      45.11495,
+      5.72267
+    ],
+    "label": "Champagnier",
+    "citycode": "38068",
+    "score": 0.9416466808910242,
+    "distance_vizille_km": 5.71,
+    "display_name": "Champagnier"
+  },
+  "chamrousse": {
+    "source": "ban-municipality",
+    "coords": [
+      45.1135,
+      5.87685
+    ],
+    "label": "Chamrousse",
+    "citycode": "38567",
+    "score": 0.9349703943285336,
+    "distance_vizille_km": 8.96,
+    "display_name": "Chamrousse"
+  },
+  "cholonge": {
+    "source": "ban-municipality",
+    "coords": [
+      45.00611,
+      5.79569
+    ],
+    "label": "Cholonge",
+    "citycode": "38106",
+    "score": 0.9341716814774267,
+    "distance_vizille_km": 8.24,
+    "display_name": "Cholonge"
+  },
+  "claix": {
+    "source": "ban-municipality",
+    "coords": [
+      45.12457,
+      5.69978
+    ],
+    "label": "Le Pont-de-Claix",
+    "citycode": "38317",
+    "score": 0.6988718289647508,
+    "distance_vizille_km": 7.75,
+    "display_name": "Claix"
+  },
+  "clelles": {
+    "source": "ban-municipality",
+    "coords": [
+      44.83694,
+      5.60421
+    ],
+    "label": "Saint-Martin-de-Clelles",
+    "citycode": "38419",
+    "score": 0.6587045553660498,
+    "distance_vizille_km": 30.01,
+    "display_name": "Clelles"
+  },
+  "comboire (échirolles)": {
+    "source": "ban-municipality",
+    "coords": [
+      45.14612,
+      5.71504
+    ],
+    "label": "Échirolles",
+    "citycode": "38151",
+    "score": 0.49508951356207753,
+    "distance_vizille_km": 8.82,
+    "display_name": "Comboire (Échirolles)"
+  },
+  "crots": {
+    "source": "ban-municipality",
+    "coords": [
+      44.51883,
+      6.4575
+    ],
+    "label": "Crots",
+    "citycode": "05045",
+    "score": 0.8638376245774023,
+    "distance_vizille_km": 82.36,
+    "display_name": "Crots"
+  },
+  "dauphiné": {
+    "coords": [
+      45.2,
+      5.7
+    ],
+    "label": "Dauphiné (province, approximatif)",
+    "kind": "region",
+    "approx": true,
+    "source": "override",
+    "display_name": "Dauphiné"
+  },
+  "eybens": {
+    "source": "ban-municipality",
+    "coords": [
+      45.15361,
+      5.74958
+    ],
+    "label": "Eybens",
+    "citycode": "38158",
+    "score": 0.9482644821367153,
+    "distance_vizille_km": 8.56,
+    "display_name": "Eybens"
+  },
+  "fontaine": {
+    "source": "ban-municipality",
+    "coords": [
+      45.19503,
+      5.68284
+    ],
+    "label": "Fontaine",
+    "citycode": "38169",
+    "score": 0.9467818212343123,
+    "distance_vizille_km": 14.79,
+    "display_name": "Fontaine"
+  },
+  "france": {
+    "coords": [
+      46.603,
+      2.44
+    ],
+    "label": "France (centroïde)",
+    "kind": "region",
+    "approx": true,
+    "source": "override",
+    "display_name": "france"
+  },
+  "gavet": {
+    "source": "ban-municipality",
+    "coords": [
+      45.08953,
+      5.90189
+    ],
+    "label": "Livet-et-Gavet",
+    "citycode": "38212",
+    "score": 0.6884842130324031,
+    "distance_vizille_km": 10.11,
+    "display_name": "Gavet"
+  },
+  "grenoble": {
+    "source": "ban-municipality",
+    "coords": [
+      45.18283,
+      5.7243
+    ],
+    "label": "Grenoble",
+    "citycode": "38185",
+    "score": 0.9570846873837229,
+    "distance_vizille_km": 12.23,
+    "display_name": "Grenoble"
+  },
+  "haute-jarrie": {
+    "source": "ban-municipality",
+    "coords": [
+      45.10438,
+      5.74894
+    ],
+    "label": "Jarrie",
+    "citycode": "38200",
+    "score": 0.45377507838217923,
+    "distance_vizille_km": 3.48,
+    "display_name": "Haute-Jarrie"
+  },
+  "herbeys": {
+    "source": "ban-municipality",
+    "coords": [
+      45.13899,
+      5.79373
+    ],
+    "label": "Herbeys",
+    "citycode": "38188",
+    "score": 0.9407870870945125,
+    "distance_vizille_km": 6.89,
+    "display_name": "Herbeys"
+  },
+  "isère": {
+    "coords": [
+      45.2,
+      5.7
+    ],
+    "label": "Département de l'Isère (approximatif)",
+    "kind": "region",
+    "approx": true,
+    "source": "override",
+    "display_name": "Isère"
+  },
+  "jarrie": {
+    "source": "ban-municipality",
+    "coords": [
+      45.10438,
+      5.74894
+    ],
+    "label": "Jarrie",
+    "citycode": "38200",
+    "score": 0.9461993208064218,
+    "distance_vizille_km": 3.48,
+    "display_name": "Jarrie"
+  },
+  "l'alpe d'huez": {
+    "source": "ban-search",
+    "coords": [
+      45.06296,
+      6.03798
+    ],
+    "label": "Route de l'Alpe d'Huez 38520 Le Bourg-d'Oisans",
+    "citycode": "38052",
+    "score": 0.6947187427783721,
+    "distance_vizille_km": 20.8,
+    "display_name": "L'Alpe d'Huez"
+  },
+  "l'oisans": {
+    "coords": [
+      45.08,
+      6.03
+    ],
+    "label": "L'Oisans (massif, approximatif)",
+    "kind": "region",
+    "approx": true,
+    "source": "override",
+    "display_name": "L'Oisans"
+  },
+  "la morte": {
+    "source": "ban-municipality",
+    "coords": [
+      45.02523,
+      5.85838
+    ],
+    "label": "La Morte",
+    "citycode": "38264",
+    "score": 0.9302599873827705,
+    "distance_vizille_km": 8.9,
+    "display_name": "La Morte"
+  },
+  "la paute": {
+    "source": "ban-search",
+    "coords": [
+      45.07888,
+      5.77557
+    ],
+    "label": "Chemin de la Paute 38220 Vizille",
+    "citycode": "38562",
+    "score": 0.7049269632846056,
+    "distance_vizille_km": 0.13,
+    "display_name": "La Paute"
+  },
+  "laffrey": {
+    "source": "ban-municipality",
+    "coords": [
+      45.0247,
+      5.78227
+    ],
+    "label": "Laffrey",
+    "citycode": "38203",
+    "score": 0.9365155058774601,
+    "distance_vizille_km": 6.03,
+    "display_name": "Laffrey"
+  },
+  "livet": {
+    "source": "ban-municipality",
+    "coords": [
+      45.08953,
+      5.90189
+    ],
+    "label": "Livet-et-Gavet",
+    "citycode": "38212",
+    "score": 0.8551508796990698,
+    "distance_vizille_km": 10.11,
+    "display_name": "Livet"
+  },
+  "livet et gavet": {
+    "source": "ban-municipality",
+    "coords": [
+      45.08953,
+      5.90189
+    ],
+    "label": "Livet-et-Gavet",
+    "citycode": "38212",
+    "score": 0.9384842130324033,
+    "distance_vizille_km": 10.11,
+    "display_name": "Livet et Gavet"
+  },
+  "lyon": {
+    "source": "ban-municipality",
+    "coords": [
+      45.73385,
+      4.86951
+    ],
+    "label": "Lyon 8e Arrondissement",
+    "citycode": "69388",
+    "score": 0.7927616666666667,
+    "distance_vizille_km": 101.46,
+    "display_name": "Lyon"
+  },
+  "massif de belledonne": {
+    "coords": [
+      45.2,
+      5.98
+    ],
+    "label": "Massif de Belledonne (approximatif)",
+    "kind": "region",
+    "approx": true,
+    "source": "override",
+    "display_name": "Massif de Belledonne"
+  },
+  "matheysine": {
+    "coords": [
+      44.967,
+      5.783
+    ],
+    "label": "Matheysine (plateau, approximatif)",
+    "kind": "region",
+    "approx": true,
+    "source": "override",
+    "display_name": "Matheysine"
+  },
+  "monestier de clermont": {
+    "source": "ban-municipality",
+    "coords": [
+      44.91903,
+      5.63338
+    ],
+    "label": "Monestier-de-Clermont",
+    "citycode": "38242",
+    "score": 0.9291563436474569,
+    "distance_vizille_km": 20.91,
+    "display_name": "Monestier de Clermont"
+  },
+  "mont aiguille": {
+    "coords": [
+      44.844,
+      5.554
+    ],
+    "label": "Mont Aiguille",
+    "kind": "lieu-dit",
+    "source": "override",
+    "display_name": "Mont Aiguille"
+  },
+  "montchaboud": {
+    "source": "ban-municipality",
+    "coords": [
+      45.09499,
+      5.76263
+    ],
+    "label": "Montchaboud",
+    "citycode": "38252",
+    "score": 0.9364197402464277,
+    "distance_vizille_km": 2.03,
+    "display_name": "Montchaboud"
+  },
+  "montchaffrey": {
+    "coords": [
+      45.10124,
+      5.82576
+    ],
+    "label": "Montchaffrey",
+    "kind": "lieu-dit",
+    "source": "override",
+    "display_name": "Montchaffrey"
+  },
+  "montjean": {
+    "coords": [
+      45.0793,
+      5.8001
+    ],
+    "label": "Montjean (hameau de Vizille, hauteurs côté Belledonne)",
+    "kind": "lieu-dit",
+    "source": "override",
+    "display_name": "Montjean"
+  },
+  "notre dame de mésage": {
+    "source": "ban-municipality",
+    "coords": [
+      45.07203,
+      5.7542
+    ],
+    "label": "Notre-Dame-de-Mésage",
+    "citycode": "38279",
+    "score": 0.9412901917823318,
+    "distance_vizille_km": 1.72,
+    "display_name": "Notre Dame de Mésage"
+  },
+  "vizille": {
+    "coords": [
+      45.0786,
+      5.774
+    ],
+    "label": "Vizille (centre, place du Château)",
+    "kind": "commune",
+    "source": "override",
+    "display_name": "vizille"
+  },
+  "pays vizillois": {
+    "coords": [
+      45.0786,
+      5.774
+    ],
+    "label": "Pays vizillois (centré sur Vizille)",
+    "kind": "region",
+    "approx": true,
+    "source": "override",
+    "display_name": "Pays vizillois"
+  },
+  "pellafol": {
+    "source": "ban-municipality",
+    "coords": [
+      44.7962,
+      5.904
+    ],
+    "label": "Pellafol",
+    "citycode": "38299",
+    "score": 0.903213834761605,
+    "distance_vizille_km": 33.03,
+    "display_name": "Pellafol"
+  },
+  "petichet": {
+    "coords": [
+      44.991,
+      5.762
+    ],
+    "label": "Petichet (hameau de Saint-Théoffrey)",
+    "kind": "lieu-dit",
+    "source": "override",
+    "display_name": "Petichet"
+  },
+  "rioupéroux": {
+    "coords": [
+      45.0923,
+      5.9035
+    ],
+    "label": "Rioupéroux (Livet-et-Gavet, vallée de la Romanche)",
+    "kind": "lieu-dit",
+    "source": "override",
+    "display_name": "Rioupéroux"
+  },
+  "saint barthélémy de séchilienne": {
+    "source": "ban-municipality",
+    "coords": [
+      45.04312,
+      5.82685
+    ],
+    "label": "Saint-Barthélemy-de-Séchilienne",
+    "citycode": "38364",
+    "score": 0.9362312331126992,
+    "distance_vizille_km": 5.73,
+    "display_name": "Saint Barthélémy de Séchilienne"
+  },
+  "saint georges de commiers": {
+    "source": "ban-municipality",
+    "coords": [
+      45.03436,
+      5.71469
+    ],
+    "label": "Saint-Georges-de-Commiers",
+    "citycode": "38388",
+    "score": 0.9434992806468638,
+    "distance_vizille_km": 6.77,
+    "display_name": "Saint Georges de Commiers"
+  },
+  "saint jean de vaulx": {
+    "source": "ban-municipality",
+    "coords": [
+      45.0144,
+      5.75966
+    ],
+    "label": "Saint-Jean-de-Vaulx",
+    "citycode": "38402",
+    "score": 0.9365759045944407,
+    "distance_vizille_km": 7.23,
+    "display_name": "Saint Jean de Vaulx"
+  },
+  "saint jean de vaux": {
+    "source": "ban-municipality",
+    "coords": [
+      45.0144,
+      5.75966
+    ],
+    "label": "Saint-Jean-de-Vaulx",
+    "citycode": "38402",
+    "score": 0.7348215186295285,
+    "distance_vizille_km": 7.23,
+    "display_name": "Saint Jean de Vaux"
+  },
+  "saint martin de la cluze": {
+    "source": "ban-municipality",
+    "coords": [
+      44.99298,
+      5.66735
+    ],
+    "label": "Saint-Martin-de-la-Cluze",
+    "citycode": "38115",
+    "score": 0.9345246408758666,
+    "distance_vizille_km": 12.68,
+    "display_name": "Saint Martin de la Cluze"
+  },
+  "saint paul de varces": {
+    "source": "ban-municipality",
+    "coords": [
+      45.07348,
+      5.64654
+    ],
+    "label": "Saint-Paul-de-Varces",
+    "citycode": "38436",
+    "score": 0.9409175520677848,
+    "distance_vizille_km": 10.02,
+    "display_name": "Saint Paul de Varces"
+  },
+  "saint pierre de mésage": {
+    "coords": [
+      45.062,
+      5.77
+    ],
+    "label": "Saint-Pierre-de-Mésage",
+    "kind": "commune",
+    "source": "override",
+    "display_name": "Saint Pierre de Mésage"
+  },
+  "saint-maurice-en-trièves": {
+    "source": "ban-municipality",
+    "coords": [
+      44.76622,
+      5.66056
+    ],
+    "label": "Saint-Maurice-en-Trièves",
+    "citycode": "38424",
+    "score": 0.9003089991468394,
+    "distance_vizille_km": 35.87,
+    "display_name": "Saint-Maurice-en-Trièves"
+  },
+  "sassenage": {
+    "source": "ban-municipality",
+    "coords": [
+      45.21414,
+      5.66199
+    ],
+    "label": "Sassenage",
+    "citycode": "38474",
+    "score": 0.941562481602309,
+    "distance_vizille_km": 17.44,
+    "display_name": "Sassenage"
+  },
+  "séchilienne": {
+    "source": "ban-municipality",
+    "coords": [
+      45.06799,
+      5.82149
+    ],
+    "label": "Séchilienne",
+    "citycode": "38478",
+    "score": 0.9403472434238915,
+    "distance_vizille_km": 3.91,
+    "display_name": "Séchilienne"
+  },
+  "tavernolles": {
+    "coords": [
+      45.1368,
+      5.7699
+    ],
+    "label": "Tavernolles (hameau de Brié-et-Angonnes)",
+    "kind": "lieu-dit",
+    "source": "override",
+    "display_name": "Tavernolles"
+  },
+  "uriage": {
+    "coords": [
+      45.147,
+      5.826
+    ],
+    "label": "Uriage-les-Bains (hameau de Saint-Martin-d'Uriage)",
+    "kind": "lieu-dit",
+    "source": "override",
+    "display_name": "Uriage"
+  },
+  "varces": {
+    "source": "ban-municipality",
+    "coords": [
+      45.09506,
+      5.67715
+    ],
+    "label": "Varces-Allières-et-Risset",
+    "citycode": "38524",
+    "score": 0.8644650176147767,
+    "distance_vizille_km": 7.82,
+    "display_name": "Varces"
+  },
+  "vaulnaveys": {
+    "source": "ban-municipality",
+    "coords": [
+      45.10411,
+      5.80841
+    ],
+    "label": "Vaulnaveys-le-Bas",
+    "citycode": "38528",
+    "score": 0.858434103479242,
+    "distance_vizille_km": 3.92,
+    "display_name": "Vaulnaveys"
+  },
+  "vaulnaveys le bas": {
+    "source": "ban-municipality",
+    "coords": [
+      45.10411,
+      5.80841
+    ],
+    "label": "Vaulnaveys-le-Bas",
+    "citycode": "38528",
+    "score": 0.9417674368125752,
+    "distance_vizille_km": 3.92,
+    "display_name": "Vaulnaveys le bas"
+  },
+  "vaulnaveys le haut": {
+    "coords": [
+      45.115,
+      5.825
+    ],
+    "label": "Vaulnaveys-le-Haut",
+    "kind": "commune",
+    "source": "override",
+    "display_name": "Vaulnaveys le haut"
+  },
+  "verdun": {
+    "coords": [
+      49.16,
+      5.387
+    ],
+    "label": "Verdun (Meuse) — à confirmer selon contexte",
+    "kind": "commune",
+    "approx": true,
+    "todo": true,
+    "source": "override",
+    "display_name": "Verdun"
+  },
+  "villeneuve d'uriage": {
+    "coords": [
+      45.137,
+      5.842
+    ],
+    "label": "Villeneuve-d'Uriage (hameau)",
+    "kind": "lieu-dit",
+    "source": "override",
+    "display_name": "Villeneuve d'Uriage"
+  }
+}
