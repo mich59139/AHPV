@@ -742,6 +742,74 @@ html, body {
   box-shadow: 0 3px 10px rgba(0,0,0,0.35);
 }
 
+/* Marker "approximatif" (régions, lieux flous) — bordure pointillée */
+.custom-marker.approx {
+  border-style: dashed;
+  border-color: rgba(255,255,255,0.7);
+  opacity: 0.85;
+}
+
+/* ============================================
+   Marker spécial Vizille (point d'ancrage du projet)
+   Toujours visible, hors cluster, doré.
+   ============================================ */
+.ahpv-vizille-marker {
+  background: transparent !important;
+  border: none !important;
+}
+.vizille-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: auto;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35));
+  transition: transform .2s;
+}
+.vizille-marker:hover { transform: scale(1.08); }
+.vizille-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: linear-gradient(135deg, #daa520 0%, #b8860b 100%);
+  border: 3px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  font-size: 0; /* cache le texte HTML, on affiche via ::before */
+}
+.vizille-icon::before {
+  content: '⛰';
+  font-size: 22px;
+  transform: rotate(45deg);
+  display: block;
+  line-height: 1;
+}
+.vizille-label {
+  background: #fff;
+  border: 2px solid #daa520;
+  border-radius: 14px;
+  padding: 3px 10px;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #5d2e0d;
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.15;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+}
+.vizille-name { font-size: 12px; }
+.vizille-count { font-size: 10px; color: #8b4513; opacity: .85; font-weight: 500; }
+
+/* Mode ajustement actif */
+body.adjust-mode .leaflet-marker-draggable { cursor: move !important; }
+body.adjust-mode .vizille-marker { outline: 3px dashed #dc2626; outline-offset: 4px; border-radius: 50%; }
+
 /* Marker clusters */
 .marker-cluster {
   background-color: rgba(30, 58, 95, 0.6);

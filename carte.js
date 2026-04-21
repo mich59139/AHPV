@@ -10,76 +10,135 @@ const CONFIG = {
     csvPath: 'data/articles.csv'
 };
 
-// Coordonnées GPS - v2.1 avec 69 lieux + normalisation
-const VILLE_COORDINATES = {
-    'allemond': [45.132, 6.040],
-    'belledonne': [45.200, 5.980],
-    "bessey d'oz": [45.098, 6.050],
-    "bourg d'oisans": [45.056, 6.030],
-    'brandes en oisans': [45.103, 6.082],
-    'bresson': [45.139, 5.740],
-    'brié': [45.125, 5.793],
-    'brié et angonnes': [45.125, 5.793],
-    'canton': [45.073, 5.773],
-    'champ sur drac': [45.080, 5.733],
-    'champagnier': [45.112, 5.721],
-    'chamrousse': [45.117, 5.878],
-    'cholonge': [44.979, 5.741],
-    'claix': [45.123, 5.673],
-    'clelles': [44.822, 5.631],
-    'comboire': [45.135, 5.714],
-    'crots': [44.545, 6.447],
-    'dauphiné': [45.200, 5.700],
-    'eybens': [45.147, 5.753],
-    'fontaine': [45.192, 5.689],
-    'france': [46.603, 2.440],
-    'gavet': [45.055, 5.870],
-    'grenoble': [45.188, 5.727],
-    'haute-jarrie': [45.092, 5.763],
-    'herbeys': [45.137, 5.798],
-    'isère': [45.200, 5.700],
-    'jarrie': [45.115, 5.758],
-    "l'alpe d'huez": [45.092, 6.072],
-    "l'oisans": [45.100, 6.000],
-    'la morte': [45.027, 5.862],
-    'la paute': [45.080, 5.897],
-    'laffrey': [45.008, 5.767],
-    'livet': [45.093, 5.915],
-    'livet et gavet': [45.093, 5.915],
-    'lyon': [45.764, 4.835],
-    'massif de belledonne': [45.200, 5.980],
-    'matheysine': [44.967, 5.783],
-    'monestier de clermont': [44.919, 5.635],
-    'mont aiguille': [44.844, 5.554],
-    'montchaboud': [45.125, 5.770],
-    'montchaffrey': [45.110, 5.829],
-    'montjean': [45.046, 5.718],
-    'notre dame de mésage': [45.074, 5.749],
-    'oisans': [45.073, 5.773],
-    'pays vizillois': [45.073, 5.773],
-    'pellafol': [44.778, 5.893],
-    'petichet': [44.991, 5.765],
-    'rioupéroux': [45.092, 5.903],
-    'saint barthélémy de séchilienne': [45.031, 5.823],
-    'saint georges de commiers': [45.046, 5.704],
-    'saint jean de vaux': [45.052, 5.768],
-    'saint martin de la cluze': [45.031, 5.697],
-    'saint paul de varces': [45.069, 5.663],
-    'saint pierre de mésage': [45.070, 5.760],
-    'saint-maurice-en-trièves': [44.859, 5.681],
-    'sassenage': [45.212, 5.661],
-    'séchilienne': [45.054, 5.835],
-    'tavernolles': [45.042, 5.695],
-    'uriage': [45.147, 5.826],
-    'varces': [45.092, 5.676],
-    'vaulnaveys': [45.111, 5.818],
-    'vaulnaveys le bas': [45.107, 5.811],
-    'vaulnaveys le haut': [45.115, 5.825],
-    'verdun': [49.160, 5.387],
-    "villeneuve d'uriage": [45.137, 5.842],
-    'vizille': [45.073, 5.773],
-    'échirolles': [45.135, 5.714]
-};
+// Coordonnées GPS - v2.2 : chargées depuis data/coordonnees.json (généré par BAN)
+// + data/overrides.json (corrections manuelles, prioritaires).
+// Le mode ajustement (bouton ✏️) permet de déplacer un marker et d'exporter
+// le snippet JSON à coller dans overrides.json.
+let VILLE_COORDINATES = {};
+let VILLE_META = {}; // {key: {label, kind, approx, source}}
+let COORDONNEES_LOADED = false;
+
+async function loadCoordonnees() {
+    try {
+        const [coordsResp, overrideResp] = await Promise.all([
+            fetch('data/coordonnees.json', {cache: 'no-cache'}),
+            fetch('data/overrides.json', {cache: 'no-cache'})
+        ]);
+        const coords = coordsResp.ok ? await coordsResp.json() : {};
+        const overrides = overrideResp.ok ? await overrideResp.json() : {};
+
+        // Le fichier coordonnees.json contient déjà les overrides fusionnés
+        // (le script geocode-ban.js les applique), mais on re-fusionne par sécurité.
+        Object.entries(coords).forEach(([k, v]) => {
+            if (k.startsWith('_') || !v.coords) return;
+            VILLE_COORDINATES[k] = v.coords;
+            VILLE_META[k] = {label: v.label, kind: v.kind, approx: !!v.approx, source: v.source};
+        });
+        Object.entries(overrides).forEach(([k, v]) => {
+            if (k.startsWith('_') || !v.coords) return;
+            VILLE_COORDINATES[k] = v.coords;
+            VILLE_META[k] = {label: v.label, kind: v.kind, approx: !!v.approx, source: 'override'};
+        });
+        COORDONNEES_LOADED = true;
+        console.log('📍 Coordonnées chargées : ' + Object.keys(VILLE_COORDINATES).length + ' lieux');
+    } catch (e) {
+        console.error('❌ Échec chargement coordonnées :', e);
+    }
+}
+
+// ============================================
+// Mode ajustement : déplacer les markers et exporter
+// ============================================
+window._adjustMode = false;
+const ADJUST_CHANGES = {}; // {key: {coords:[lat,lng], label}}
+
+function toggleAdjustMode(btn) {
+    window._adjustMode = !window._adjustMode;
+    document.body.classList.toggle('adjust-mode', window._adjustMode);
+    if (btn) {
+        btn.style.background = window._adjustMode ? '#daa520' : '';
+        btn.style.color = window._adjustMode ? '#fff' : '';
+    }
+    if (window._adjustMode) {
+        showAdjustToast(
+            'Mode ajustement activé. Glisse un marker pour le repositionner. ' +
+            'Clique 📋 dans le panneau pour copier le snippet JSON à coller dans data/overrides.json.'
+        );
+        ensureAdjustPanel();
+    } else {
+        hideAdjustPanel();
+    }
+    applyFilters(); // re-render markers en mode draggable
+}
+
+function attachAdjustHandlers(marker, key) {
+    marker.on('dragend', function(e) {
+        const ll = e.target.getLatLng();
+        const coords = [Number(ll.lat.toFixed(5)), Number(ll.lng.toFixed(5))];
+        const meta = VILLE_META[key] || {};
+        ADJUST_CHANGES[key] = {
+            coords,
+            label: meta.label || key,
+            kind: meta.kind || 'commune'
+        };
+        VILLE_COORDINATES[key] = coords;
+        renderAdjustPanel();
+    });
+}
+
+function ensureAdjustPanel() {
+    if (document.getElementById('adjust-panel')) return;
+    const div = document.createElement('div');
+    div.id = 'adjust-panel';
+    div.style.cssText = 'position:fixed;top:90px;right:10px;width:340px;max-height:70vh;overflow:auto;background:#faf8f3;border:2px solid #daa520;border-radius:10px;padding:12px;box-shadow:0 4px 16px rgba(0,0,0,0.2);z-index:9999;font-size:12px;';
+    div.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong style="color:#5d2e0d">🎯 Ajustements en cours</strong><button id="adjust-close" style="border:none;background:none;font-size:16px;cursor:pointer">✕</button></div><div id="adjust-list" style="color:#666"><em>Aucun marker déplacé pour l\'instant.</em></div>';
+    document.body.appendChild(div);
+    document.getElementById('adjust-close').onclick = () => {
+        const btn = document.querySelector('.leaflet-bar-part[title^="Mode ajustement"]');
+        toggleAdjustMode(btn);
+    };
+}
+
+function hideAdjustPanel() {
+    const el = document.getElementById('adjust-panel');
+    if (el) el.remove();
+}
+
+function renderAdjustPanel() {
+    const list = document.getElementById('adjust-list');
+    if (!list) return;
+    const keys = Object.keys(ADJUST_CHANGES);
+    if (!keys.length) { list.innerHTML = '<em>Aucun marker déplacé pour l\'instant.</em>'; return; }
+    let html = '';
+    keys.forEach(k => {
+        const c = ADJUST_CHANGES[k];
+        html += `<div style="border-bottom:1px solid #e0d8c5;padding:6px 0"><strong>${k}</strong><br><code style="font-size:10px">[${c.coords[0]}, ${c.coords[1]}]</code></div>`;
+    });
+    const snippet = generateOverrideSnippet();
+    html += `<div style="margin-top:10px"><button id="adjust-copy" style="background:#daa520;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-weight:600;width:100%">📋 Copier snippet JSON</button></div>`;
+    html += `<details style="margin-top:8px"><summary style="cursor:pointer;color:#666">Voir le JSON</summary><pre style="background:#fff;padding:8px;border-radius:6px;font-size:10px;overflow:auto;max-height:200px;border:1px solid #e0d8c5">${snippet}</pre></details>`;
+    html += `<div style="margin-top:6px;font-size:11px;color:#666">Colle ce snippet dans <code>data/overrides.json</code> puis recharge.</div>`;
+    list.innerHTML = html;
+    document.getElementById('adjust-copy').onclick = () => {
+        navigator.clipboard.writeText(snippet).then(() => showAdjustToast('✅ Snippet copié dans le presse-papier'));
+    };
+}
+
+function generateOverrideSnippet() {
+    const obj = {};
+    Object.entries(ADJUST_CHANGES).forEach(([k, v]) => {
+        obj[k] = { coords: v.coords, label: v.label, kind: v.kind };
+    });
+    return JSON.stringify(obj, null, 2);
+}
+
+function showAdjustToast(msg) {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#5d2e0d;color:#fff;padding:10px 18px;border-radius:8px;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,0.3);font-size:13px;max-width:500px;text-align:center';
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 4500);
+}
 
 // Normaliser les noms de villes (apostrophes, espaces)
 function normalizeVilleName(name) {
@@ -245,6 +304,24 @@ function initMap() {
     L.control.home = function (opts) { return new L.Control.Home(opts); };
     L.control.home({ position: 'topright' }).addTo(map);
 
+    // Bouton Mode ajustement (déplacer les markers pour corriger les coordonnées)
+    L.Control.Adjust = L.Control.extend({
+        onAdd: function () {
+            const btn = L.DomUtil.create('button', 'btn btn-secondary leaflet-bar-part');
+            btn.innerHTML = '✏️';
+            btn.title = 'Mode ajustement : déplacer les markers pour corriger les coordonnées';
+            btn.style.fontSize = '14px';
+            btn.onclick = (e) => {
+                L.DomEvent.stopPropagation(e);
+                toggleAdjustMode(btn);
+            };
+            return btn;
+        },
+        onRemove: function () {}
+    });
+    L.control.adjust = function (opts) { return new L.Control.Adjust(opts); };
+    L.control.adjust({ position: 'topright' }).addTo(map);
+
     // Bouton Plein écran
     L.Control.Fullscreen = L.Control.extend({
         onAdd: function () {
@@ -318,6 +395,11 @@ function loadData() {
         return;
     }
     
+    // Charger d'abord les coordonnées (BAN + overrides) puis les articles
+    loadCoordonnees().then(() => parseArticles());
+}
+
+function parseArticles() {
     Papa.parse(CONFIG.csvPath, {
         download: true,
         header: true,
@@ -562,12 +644,63 @@ function processData() {
     });
 
     markerClusterGroup.clearLayers();
+    if (vizilleSpecialMarker) { map.removeLayer(vizilleSpecialMarker); vizilleSpecialMarker = null; }
     markers = [];
 
+    // Agréger les articles "Vizille" (et alias géographiques pointant sur Vizille)
+    // pour les afficher via un marker spécial hors cluster (point d'ancrage du projet).
+    const vizilleAliases = ['vizille', 'pays vizillois', 'canton', 'oisans ou vizille'];
+    let vizilleArticles = [];
+    let vizilleDisplayName = 'Vizille';
     for (const [ville, articles] of Object.entries(articlesByVille)) {
+        const key = normalizeVilleName(ville).toLowerCase().replace(/\s*\(\d+\)\s*/, '');
+        if (vizilleAliases.includes(key)) {
+            vizilleArticles = vizilleArticles.concat(articles);
+        }
+    }
+    // Dédoublonner par titre+année
+    const seen = new Set();
+    vizilleArticles = vizilleArticles.filter(a => {
+        const k = (a.Titre || '') + '|' + (a['Année'] || '');
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+    });
+    createVizilleMarker(vizilleArticles);
+
+    for (const [ville, articles] of Object.entries(articlesByVille)) {
+        const key = normalizeVilleName(ville).toLowerCase().replace(/\s*\(\d+\)\s*/, '');
+        if (vizilleAliases.includes(key)) continue; // déjà géré
         const coords = getVilleCoordinates(ville);
         if (coords) createMarker(ville, articles, coords);
     }
+}
+
+let vizilleSpecialMarker = null;
+const VIZILLE_COORDS = [45.0786, 5.7740];
+
+function createVizilleMarker(articles) {
+    const count = articles.length;
+    const dim = count === 0 ? 'opacity:.55;' : '';
+    const html = `
+        <div class="vizille-marker" style="${dim}">
+            <div class="vizille-icon">⛰</div>
+            <div class="vizille-label">
+                <span class="vizille-name">Vizille</span>
+                <span class="vizille-count">${count} article${count > 1 ? 's' : ''}</span>
+            </div>
+        </div>
+    `;
+    const icon = L.divIcon({
+        html,
+        className: 'ahpv-vizille-marker',
+        iconSize: null,
+        iconAnchor: [22, 44]
+    });
+    vizilleSpecialMarker = L.marker(VIZILLE_COORDS, {icon, zIndexOffset: 1000, draggable: window._adjustMode === true});
+    vizilleSpecialMarker.on('click', () => showInfoPanel('Vizille', articles));
+    if (window._adjustMode) attachAdjustHandlers(vizilleSpecialMarker, 'vizille');
+    vizilleSpecialMarker.addTo(map);
 }
 
 // Couleurs par thème principal
@@ -609,27 +742,37 @@ function getThemeColor(articles) {
 
 function createMarker(ville, articles, coords) {
     var color = getThemeColor(articles);
+    var key = normalizeVilleName(ville).toLowerCase().replace(/\s*\(\d+\)\s*/, '');
+    var meta = VILLE_META[key] || {};
+    var approxClass = meta.approx ? ' approx' : '';
+    var approxBadge = meta.approx ? ' <span style="font-size:9px;opacity:.7" title="Localisation approximative">≈</span>' : '';
 
     const markerHtml = `
-        <div class="custom-marker" style="background:${color};">
+        <div class="custom-marker${approxClass}" style="background:${color};" title="${meta.label || ville}">
             <div class="marker-content">
-                <span class="marker-ville">${ville}</span>
+                <span class="marker-ville">${ville}${approxBadge}</span>
                 <span class="marker-count">${articles.length}</span>
             </div>
         </div>
     `;
 
-    // Taille automatique pour s'adapter au contenu
     const icon = L.divIcon({
         html: markerHtml,
         className: 'ahpv-marker',
-        iconSize: null,  // Taille automatique
-        iconAnchor: [0, 0]  // Sera ajusté par CSS
+        iconSize: null,
+        iconAnchor: [0, 0]
     });
 
-    const marker = L.marker(coords, { icon });
+    const marker = L.marker(coords, { icon, draggable: window._adjustMode === true });
     marker.on('click', () => showInfoPanel(ville, articles));
-    markerClusterGroup.addLayer(marker);
+    if (window._adjustMode) attachAdjustHandlers(marker, key);
+
+    // En mode ajustement, on sort du cluster pour pouvoir drag chaque marker
+    if (window._adjustMode) {
+        marker.addTo(map);
+    } else {
+        markerClusterGroup.addLayer(marker);
+    }
     markers.push(marker);
 }
 
